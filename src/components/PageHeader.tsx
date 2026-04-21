@@ -8,10 +8,10 @@ interface Props {
   subtitle?: string;
   onAdd?: () => void;
   addLabel?: string;
-  children: ReactNode;
+  children?: ReactNode;
 }
 
-export function PageHeader({ title, subtitle, onAdd, addLabel = "Novo", children }: Props & { children?: ReactNode }) {
+export function PageHeader({ title, subtitle, onAdd, addLabel = "Novo", children }: Props) {
   return (
     <div className="flex items-start justify-between gap-4 mb-6">
       <div>
