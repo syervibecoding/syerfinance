@@ -98,7 +98,10 @@ export type Database = {
           description: string
           due_date: string
           id: string
+          installments_current: number | null
+          installments_total: number | null
           is_recurring: boolean
+          parent_expense_id: string | null
           status: string
           updated_at: string
           user_id: string
@@ -110,7 +113,10 @@ export type Database = {
           description: string
           due_date: string
           id?: string
+          installments_current?: number | null
+          installments_total?: number | null
           is_recurring?: boolean
+          parent_expense_id?: string | null
           status: string
           updated_at?: string
           user_id: string
@@ -122,7 +128,10 @@ export type Database = {
           description?: string
           due_date?: string
           id?: string
+          installments_current?: number | null
+          installments_total?: number | null
           is_recurring?: boolean
+          parent_expense_id?: string | null
           status?: string
           updated_at?: string
           user_id?: string
@@ -178,6 +187,7 @@ export type Database = {
           client: string
           contract_end_date: string | null
           created_at: string
+          daily_spend: number | null
           deadline: string | null
           discount_percentage: number | null
           discount_type: string | null
@@ -185,12 +195,15 @@ export type Database = {
           id: string
           implementation_charged: number | null
           implementation_paid: number | null
+          last_recharge_date: string | null
+          last_recharge_value: number | null
           payment_day: number | null
           recurrence_period: string | null
           recurrence_start_date: string | null
           recurrence_value: number | null
           service_name: string
           status: string
+          traffic_balance: number | null
           traffic_reload_day: number | null
           updated_at: string
           user_id: string
@@ -201,6 +214,7 @@ export type Database = {
           client: string
           contract_end_date?: string | null
           created_at?: string
+          daily_spend?: number | null
           deadline?: string | null
           discount_percentage?: number | null
           discount_type?: string | null
@@ -208,12 +222,15 @@ export type Database = {
           id?: string
           implementation_charged?: number | null
           implementation_paid?: number | null
+          last_recharge_date?: string | null
+          last_recharge_value?: number | null
           payment_day?: number | null
           recurrence_period?: string | null
           recurrence_start_date?: string | null
           recurrence_value?: number | null
           service_name: string
           status: string
+          traffic_balance?: number | null
           traffic_reload_day?: number | null
           updated_at?: string
           user_id: string
@@ -224,6 +241,7 @@ export type Database = {
           client?: string
           contract_end_date?: string | null
           created_at?: string
+          daily_spend?: number | null
           deadline?: string | null
           discount_percentage?: number | null
           discount_type?: string | null
@@ -231,16 +249,64 @@ export type Database = {
           id?: string
           implementation_charged?: number | null
           implementation_paid?: number | null
+          last_recharge_date?: string | null
+          last_recharge_value?: number | null
           payment_day?: number | null
           recurrence_period?: string | null
           recurrence_start_date?: string | null
           recurrence_value?: number | null
           service_name?: string
           status?: string
+          traffic_balance?: number | null
           traffic_reload_day?: number | null
           updated_at?: string
           user_id?: string
           value?: number
+        }
+        Relationships: []
+      }
+      tasks: {
+        Row: {
+          client: string | null
+          created_at: string
+          description: string | null
+          due_date: string | null
+          id: string
+          position: number | null
+          priority: string | null
+          service_id: string | null
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          client?: string | null
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          position?: number | null
+          priority?: string | null
+          service_id?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          client?: string | null
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          position?: number | null
+          priority?: string | null
+          service_id?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
