@@ -29,6 +29,7 @@ const baseEmpty = {
   discount_percentage: 0, discount_type: "",
   has_contract: false, contract_end_date: "",
   last_recharge_value: 0, last_recharge_date: "", daily_spend: 0, traffic_balance: 0,
+  split_payment: false, payment_day_2: null as number | null,
 };
 
 const statusVariant: Record<string, any> = {
