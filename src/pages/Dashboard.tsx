@@ -178,7 +178,10 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <Card className="lg:col-span-2">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-lg">Fluxo de Recebimento</CardTitle>
+            <div>
+              <CardTitle className="text-lg">Fluxo Mensal de Entradas e Saídas</CardTitle>
+              <p className="text-xs text-muted-foreground mt-1">Comparativo mês a mês (12 meses)</p>
+            </div>
             <div className="flex items-center gap-3 text-xs">
               <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-accent" />ENTRADAS</span>
               <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-muted-foreground/40" />SAÍDAS</span>
@@ -188,7 +191,8 @@ export default function Dashboard() {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={cashflowData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                <XAxis dataKey="day" stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} />
+                <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} />
+
                 <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false}
                   tickFormatter={(v) => `R$ ${(v/1000).toFixed(1)}k`} />
                 <Tooltip
