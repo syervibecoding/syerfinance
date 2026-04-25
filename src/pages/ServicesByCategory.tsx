@@ -209,6 +209,12 @@ export default function ServicesByCategory({ category, title }: Props) {
             </Field>
             <Field label="Início recorrência"><Input type="date" value={form.recurrence_start_date} onChange={e => set("recurrence_start_date", e.target.value)} /></Field>
             <Field label="Dia de pagamento"><Input type="number" min={1} max={31} value={form.payment_day ?? ""} onChange={e => set("payment_day", e.target.value)} /></Field>
+            <Field label="Pagamento dividido (50/50)?">
+              <div className="flex items-center h-10"><Switch checked={form.split_payment} onCheckedChange={v => set("split_payment", v)} /></div>
+            </Field>
+            <Field label="2º dia de pagamento">
+              <Input type="number" min={1} max={31} value={form.payment_day_2 ?? ""} onChange={e => set("payment_day_2", e.target.value)} disabled={!form.split_payment} placeholder={form.split_payment ? "ex: 20" : "—"} />
+            </Field>
             <Field label="Prazo (texto livre)"><Input value={form.deadline} onChange={e => set("deadline", e.target.value)} placeholder="ex: 05 Abr" /></Field>
 
             {category === "Marketing" && (
