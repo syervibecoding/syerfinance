@@ -9,8 +9,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PageHeader, EmptyState } from "@/components/PageHeader";
+import { ImplementationPayments } from "@/components/ImplementationPayments";
 import { brl } from "@/lib/format";
 import { toast } from "@/hooks/use-toast";
 import { Pencil, Trash2 } from "lucide-react";
@@ -21,7 +23,7 @@ const PERIODS = ["Mensal", "Anual"] as const;
 const baseEmpty = {
   client: "", service_name: "", status: "Pendente", value: 0,
   deadline: "", category: "Marketing",
-  implementation_charged: 0, implementation_paid: 0,
+  implementation_charged: 0,
   recurrence_value: 0, recurrence_period: "Mensal", recurrence_start_date: "",
   payment_day: null as number | null, traffic_reload_day: null as number | null,
   discount_percentage: 0, discount_type: "",
@@ -42,6 +44,7 @@ interface Props {
 export default function ServicesByCategory({ category, title }: Props) {
   const { user } = useAuth();
   const [items, setItems] = useState<any[]>([]);
+  const [paidByService, setPaidByService] = useState<Record<string, number>>({});
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
   const [form, setForm] = useState<any>({ ...baseEmpty, category });
@@ -49,6 +52,13 @@ export default function ServicesByCategory({ category, title }: Props) {
   const load = async () => {
     const { data } = await supabase.from("services").select("*").eq("category", category).order("created_at", { ascending: false });
     setItems(data ?? []);
+    const ids = (data ?? []).map(d => d.id);
+    if (ids.length) {
+      const { data: pays } = await supabase.from("implementation_payments").select("service_id, value").in("service_id", ids);
+      const totals: Record<string, number> = {};
+      (pays ?? []).forEach(p => { totals[p.service_id] = (totals[p.service_id] ?? 0) + Number(p.value); });
+      setPaidByService(totals);
+    } else setPaidByService({});
   };
   useEffect(() => { load(); }, [category]);
 
@@ -66,16 +76,26 @@ export default function ServicesByCategory({ category, title }: Props) {
   const save = async () => {
     if (!user) return;
     const payload: any = { ...form, user_id: user.id, category };
-    ["value","implementation_charged","implementation_paid","recurrence_value","discount_percentage","last_recharge_value","daily_spend","traffic_balance"].forEach(k => payload[k] = Number(payload[k] ?? 0));
+    ["value","implementation_charged","recurrence_value","discount_percentage","last_recharge_value","daily_spend","traffic_balance"].forEach(k => payload[k] = Number(payload[k] ?? 0));
     ["payment_day","traffic_reload_day"].forEach(k => payload[k] = payload[k] ? Number(payload[k]) : null);
     ["recurrence_start_date","contract_end_date","last_recharge_date"].forEach(k => { if (!payload[k]) payload[k] = null; });
     if (!payload.recurrence_period) payload.recurrence_period = null;
+    delete payload.implementation_paid; // agora derivado da tabela de pagamentos
 
-    const res = editing
-      ? await supabase.from("services").update(payload).eq("id", editing.id)
-      : await supabase.from("services").insert(payload);
-    if (res.error) toast({ title: "Erro", description: res.error.message, variant: "destructive" });
-    else { toast({ title: editing ? "Atualizado" : "Criado" }); setOpen(false); load(); }
+    if (editing) {
+      const { error } = await supabase.from("services").update(payload).eq("id", editing.id);
+      if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
+      toast({ title: "Atualizado" });
+      load();
+    } else {
+      const { data, error } = await supabase.from("services").insert(payload).select().single();
+      if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
+      toast({ title: "Criado", description: "Agora você pode registrar pagamentos da implementação." });
+      setEditing(data); // mantém aberto p/ adicionar pagamentos
+      load();
+      return;
+    }
+    setOpen(false);
   };
 
   const remove = async (id: string) => {
@@ -89,6 +109,11 @@ export default function ServicesByCategory({ category, title }: Props) {
 
   const totalMRR = useMemo(() => items.reduce((a, s) => a + Number(s.recurrence_value ?? 0), 0), [items]);
   const totalImpl = useMemo(() => items.reduce((a, s) => a + Number(s.implementation_charged ?? 0), 0), [items]);
+
+  const handleDialogClose = (v: boolean) => {
+    setOpen(v);
+    if (!v) load(); // recarrega totais após fechar (pagamentos podem ter mudado)
+  };
 
   return (
     <div>
@@ -105,19 +130,33 @@ export default function ServicesByCategory({ category, title }: Props) {
               <TableRow>
                 <TableHead>Cliente</TableHead><TableHead>Serviço</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="text-right">Implementação</TableHead>
+                <TableHead className="text-right min-w-[180px]">Implementação</TableHead>
                 <TableHead className="text-right">Recorrência</TableHead>
                 {category === "Marketing" && <TableHead className="text-right">Saldo / Diário</TableHead>}
                 <TableHead>Prazo</TableHead><TableHead></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {items.map(it => (
+              {items.map(it => {
+                const charged = Number(it.implementation_charged ?? 0);
+                const paid = paidByService[it.id] ?? 0;
+                const pct = charged > 0 ? Math.min(100, (paid / charged) * 100) : 0;
+                return (
                 <TableRow key={it.id}>
                   <TableCell className="font-medium">{it.client}</TableCell>
                   <TableCell>{it.service_name}</TableCell>
                   <TableCell><Badge variant={statusVariant[it.status]}>{it.status}</Badge></TableCell>
-                  <TableCell className="text-right tabular-nums">{brl(it.implementation_charged)}</TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    {charged > 0 ? (
+                      <div className="space-y-1">
+                        <div className="text-xs">
+                          <span className={paid >= charged ? "text-foreground font-medium" : "text-muted-foreground"}>{brl(paid)}</span>
+                          <span className="text-muted-foreground"> / {brl(charged)}</span>
+                        </div>
+                        <Progress value={pct} className="h-1" />
+                      </div>
+                    ) : <span className="text-muted-foreground">-</span>}
+                  </TableCell>
                   <TableCell className="text-right tabular-nums text-muted-foreground">
                     {it.recurrence_value ? `${brl(it.recurrence_value)}/${it.recurrence_period === "Anual" ? "ano" : "mês"}` : "-"}
                   </TableCell>
@@ -132,13 +171,13 @@ export default function ServicesByCategory({ category, title }: Props) {
                     <Button variant="ghost" size="icon" onClick={() => remove(it.id)}><Trash2 className="h-4 w-4" /></Button>
                   </TableCell>
                 </TableRow>
-              ))}
+              );})}
             </TableBody>
           </Table>
         </Card>
       )}
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={handleDialogClose}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{editing ? "Editar serviço" : "Novo serviço"}</DialogTitle></DialogHeader>
           <div className="grid grid-cols-2 gap-4 py-2">
@@ -152,8 +191,13 @@ export default function ServicesByCategory({ category, title }: Props) {
             </Field>
             <Field label="Valor cobrado (R$)"><Input type="number" step="0.01" value={form.value} onChange={e => set("value", e.target.value)} /></Field>
 
-            <Field label="Implementação cobrada"><Input type="number" step="0.01" value={form.implementation_charged} onChange={e => set("implementation_charged", e.target.value)} /></Field>
-            <Field label="Implementação paga"><Input type="number" step="0.01" value={form.implementation_paid} onChange={e => set("implementation_paid", e.target.value)} /></Field>
+            <Field label="Implementação cobrada (R$)"><Input type="number" step="0.01" value={form.implementation_charged} onChange={e => set("implementation_charged", e.target.value)} /></Field>
+            <div />
+
+            <ImplementationPayments
+              serviceId={editing?.id ?? null}
+              charged={Number(form.implementation_charged ?? 0)}
+            />
 
             <Field label="Recorrência (R$)"><Input type="number" step="0.01" value={form.recurrence_value} onChange={e => set("recurrence_value", e.target.value)} /></Field>
             <Field label="Período">
@@ -185,7 +229,7 @@ export default function ServicesByCategory({ category, title }: Props) {
             <Field label="Fim do contrato"><Input type="date" value={form.contract_end_date} onChange={e => set("contract_end_date", e.target.value)} disabled={!form.has_contract} /></Field>
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button>
+            <Button variant="ghost" onClick={() => handleDialogClose(false)}>Fechar</Button>
             <Button onClick={save}>Salvar</Button>
           </DialogFooter>
         </DialogContent>
