@@ -106,7 +106,13 @@ export default function Dashboard() {
   const receiptCalendar = useMemo(() => {
     const list: { client: string; day: number; value: number; type: string }[] = [];
     services.filter(s => Number(s.recurrence_value) > 0).forEach(s => {
-      list.push({ client: s.client, day: s.payment_day ?? 1, value: Number(s.recurrence_value), type: s.category });
+      const val = Number(s.recurrence_value);
+      if (s.split_payment && s.payment_day_2) {
+        list.push({ client: `${s.client} (1ª parcela)`, day: s.payment_day ?? 1, value: val / 2, type: s.category });
+        list.push({ client: `${s.client} (2ª parcela)`, day: s.payment_day_2, value: val / 2, type: s.category });
+      } else {
+        list.push({ client: s.client, day: s.payment_day ?? 1, value: val, type: s.category });
+      }
     });
     contracts.filter(c => c.status === "Ativo").forEach(c => {
       list.push({ client: c.client, day: c.payment_day ?? 1, value: Number(c.monthly_value), type: "Manutenção" });
