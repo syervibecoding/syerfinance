@@ -60,6 +60,13 @@ export default function Dashboard() {
     return { mrrGross, mrrNet, totalExpenses, recurringExpenses, ticket, ltvAvg, recurringClients, balanceDue, dailyAverage, proLabore };
   }, [services, contracts, expenses, companies, implPayments, monthRef]);
 
+  // Entradas históricas simuladas (não cadastradas na plataforma) — chave: "YYYY-M" (mês 0-indexado)
+  const HISTORICAL_ENTRIES: Record<string, number> = {
+    "2026-0": 2040,      // Janeiro/2026
+    "2026-1": 2350.37,   // Fevereiro/2026
+    "2026-2": 6120,      // Março/2026
+  };
+
   // Fluxo mensal — últimos 6 meses + atual + próximos 5 (12 meses centrados)
   const cashflowData = useMemo(() => {
     const months: { key: string; label: string; year: number; month: number }[] = [];
@@ -74,7 +81,6 @@ export default function Dashboard() {
 
     // Recorrências ativas (serviços + contratos + sociedades) — só contam a partir do início da recorrência
     const recurringEntries = (year: number, month: number) => {
-      const monthStart = new Date(year, month, 1);
       const monthEnd = new Date(year, month + 1, 0);
       let total = 0;
       services.filter(s => Number(s.recurrence_value) > 0).forEach(s => {
@@ -90,6 +96,8 @@ export default function Dashboard() {
         const d = new Date(s.recurrence_start_date);
         if (d.getFullYear() === year && d.getMonth() === month) total += Number(s.value);
       });
+      // Entradas históricas simuladas
+      total += HISTORICAL_ENTRIES[`${year}-${month}`] ?? 0;
       return total;
     };
 
@@ -98,7 +106,7 @@ export default function Dashboard() {
       const saidas = expenses
         .filter(x => { const d = new Date(x.due_date); return d.getFullYear() === m.year && d.getMonth() === m.month; })
         .reduce((a, x) => a + Number(x.value), 0);
-      return { month: m.label, entradas: Math.round(entradas), saidas: Math.round(saidas) };
+      return { month: m.label, entradas: Math.round(entradas * 100) / 100, saidas: Math.round(saidas * 100) / 100 };
     });
   }, [monthRef, expenses, services, contracts]);
 
