@@ -16,20 +16,23 @@ export default function Dashboard() {
   const [contracts, setContracts] = useState<any[]>([]);
   const [expenses, setExpenses] = useState<any[]>([]);
   const [companies, setCompanies] = useState<any[]>([]);
+  const [implPayments, setImplPayments] = useState<any[]>([]);
   const [monthRef, setMonthRef] = useState(new Date());
 
   useEffect(() => {
     (async () => {
-      const [s, c, e, co] = await Promise.all([
+      const [s, c, e, co, ip] = await Promise.all([
         supabase.from("services").select("*"),
         supabase.from("maintenance_contracts").select("*"),
         supabase.from("expenses").select("*"),
         supabase.from("companies").select("*"),
+        supabase.from("implementation_payments").select("*"),
       ]);
       setServices(s.data ?? []);
       setContracts(c.data ?? []);
       setExpenses(e.data ?? []);
       setCompanies(co.data ?? []);
+      setImplPayments(ip.data ?? []);
     })();
   }, []);
 
@@ -49,11 +52,13 @@ export default function Dashboard() {
     const ticket = recurringClients ? mrrGross / recurringClients : 0;
     const ltvAvg = ticket * 12; // assume 12 meses retenção média
 
-    const balanceDue = services.reduce((a, s) => a + (Number(s.implementation_charged ?? 0) - Number(s.implementation_paid ?? 0)), 0);
+    const totalPaidByService: Record<string, number> = {};
+    implPayments.forEach(p => { totalPaidByService[p.service_id] = (totalPaidByService[p.service_id] ?? 0) + Number(p.value); });
+    const balanceDue = services.reduce((a, s) => a + (Number(s.implementation_charged ?? 0) - (totalPaidByService[s.id] ?? 0)), 0);
     const dailyAverage = mrrGross / daysInMonth(monthRef);
 
     return { mrrGross, mrrNet, totalExpenses, recurringExpenses, ticket, ltvAvg, recurringClients, balanceDue, dailyAverage, proLabore };
-  }, [services, contracts, expenses, companies, monthRef]);
+  }, [services, contracts, expenses, companies, implPayments, monthRef]);
 
   // Cash flow chart for current month — daily aggregation of expenses vs daily MRR
   const cashflowData = useMemo(() => {
