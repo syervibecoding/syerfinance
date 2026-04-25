@@ -29,6 +29,7 @@ const baseEmpty = {
   discount_percentage: 0, discount_type: "",
   has_contract: false, contract_end_date: "",
   last_recharge_value: 0, last_recharge_date: "", daily_spend: 0, traffic_balance: 0,
+  split_payment: false, payment_day_2: null as number | null,
 };
 
 const statusVariant: Record<string, any> = {
@@ -77,7 +78,7 @@ export default function ServicesByCategory({ category, title }: Props) {
     if (!user) return;
     const payload: any = { ...form, user_id: user.id, category };
     ["value","implementation_charged","recurrence_value","discount_percentage","last_recharge_value","daily_spend","traffic_balance"].forEach(k => payload[k] = Number(payload[k] ?? 0));
-    ["payment_day","traffic_reload_day"].forEach(k => payload[k] = payload[k] ? Number(payload[k]) : null);
+    ["payment_day","traffic_reload_day","payment_day_2"].forEach(k => payload[k] = payload[k] ? Number(payload[k]) : null);
     ["recurrence_start_date","contract_end_date","last_recharge_date"].forEach(k => { if (!payload[k]) payload[k] = null; });
     if (!payload.recurrence_period) payload.recurrence_period = null;
     delete payload.implementation_paid; // agora derivado da tabela de pagamentos
@@ -208,6 +209,12 @@ export default function ServicesByCategory({ category, title }: Props) {
             </Field>
             <Field label="Início recorrência"><Input type="date" value={form.recurrence_start_date} onChange={e => set("recurrence_start_date", e.target.value)} /></Field>
             <Field label="Dia de pagamento"><Input type="number" min={1} max={31} value={form.payment_day ?? ""} onChange={e => set("payment_day", e.target.value)} /></Field>
+            <Field label="Pagamento dividido (50/50)?">
+              <div className="flex items-center h-10"><Switch checked={form.split_payment} onCheckedChange={v => set("split_payment", v)} /></div>
+            </Field>
+            <Field label="2º dia de pagamento">
+              <Input type="number" min={1} max={31} value={form.payment_day_2 ?? ""} onChange={e => set("payment_day_2", e.target.value)} disabled={!form.split_payment} placeholder={form.split_payment ? "ex: 20" : "—"} />
+            </Field>
             <Field label="Prazo (texto livre)"><Input value={form.deadline} onChange={e => set("deadline", e.target.value)} placeholder="ex: 05 Abr" /></Field>
 
             {category === "Marketing" && (

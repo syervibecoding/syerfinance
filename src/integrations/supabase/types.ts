@@ -231,10 +231,12 @@ export type Database = {
           last_recharge_date: string | null
           last_recharge_value: number | null
           payment_day: number | null
+          payment_day_2: number | null
           recurrence_period: string | null
           recurrence_start_date: string | null
           recurrence_value: number | null
           service_name: string
+          split_payment: boolean
           status: string
           traffic_balance: number | null
           traffic_reload_day: number | null
@@ -258,10 +260,12 @@ export type Database = {
           last_recharge_date?: string | null
           last_recharge_value?: number | null
           payment_day?: number | null
+          payment_day_2?: number | null
           recurrence_period?: string | null
           recurrence_start_date?: string | null
           recurrence_value?: number | null
           service_name: string
+          split_payment?: boolean
           status: string
           traffic_balance?: number | null
           traffic_reload_day?: number | null
@@ -285,10 +289,12 @@ export type Database = {
           last_recharge_date?: string | null
           last_recharge_value?: number | null
           payment_day?: number | null
+          payment_day_2?: number | null
           recurrence_period?: string | null
           recurrence_start_date?: string | null
           recurrence_value?: number | null
           service_name?: string
+          split_payment?: boolean
           status?: string
           traffic_balance?: number | null
           traffic_reload_day?: number | null
