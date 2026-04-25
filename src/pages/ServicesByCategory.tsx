@@ -78,7 +78,7 @@ export default function ServicesByCategory({ category, title }: Props) {
     if (!user) return;
     const payload: any = { ...form, user_id: user.id, category };
     ["value","implementation_charged","recurrence_value","discount_percentage","last_recharge_value","daily_spend","traffic_balance"].forEach(k => payload[k] = Number(payload[k] ?? 0));
-    ["payment_day","traffic_reload_day"].forEach(k => payload[k] = payload[k] ? Number(payload[k]) : null);
+    ["payment_day","traffic_reload_day","payment_day_2"].forEach(k => payload[k] = payload[k] ? Number(payload[k]) : null);
     ["recurrence_start_date","contract_end_date","last_recharge_date"].forEach(k => { if (!payload[k]) payload[k] = null; });
     if (!payload.recurrence_period) payload.recurrence_period = null;
     delete payload.implementation_paid; // agora derivado da tabela de pagamentos
