@@ -139,6 +139,39 @@ export type Database = {
         }
         Relationships: []
       }
+      implementation_payments: {
+        Row: {
+          created_at: string
+          id: string
+          notes: string | null
+          paid_date: string
+          service_id: string
+          updated_at: string
+          user_id: string
+          value: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          paid_date?: string
+          service_id: string
+          updated_at?: string
+          user_id: string
+          value?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          paid_date?: string
+          service_id?: string
+          updated_at?: string
+          user_id?: string
+          value?: number
+        }
+        Relationships: []
+      }
       maintenance_contracts: {
         Row: {
           client: string
