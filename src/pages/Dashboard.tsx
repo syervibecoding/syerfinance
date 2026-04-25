@@ -60,17 +60,47 @@ export default function Dashboard() {
     return { mrrGross, mrrNet, totalExpenses, recurringExpenses, ticket, ltvAvg, recurringClients, balanceDue, dailyAverage, proLabore };
   }, [services, contracts, expenses, companies, implPayments, monthRef]);
 
-  // Cash flow chart for current month — daily aggregation of expenses vs daily MRR
+  // Fluxo mensal — últimos 6 meses + atual + próximos 5 (12 meses centrados)
   const cashflowData = useMemo(() => {
-    const days = daysInMonth(monthRef);
-    const dailyIn = metrics.mrrGross / days;
-    return Array.from({ length: days }).map((_, i) => {
-      const day = i + 1;
-      const dayDate = new Date(monthRef.getFullYear(), monthRef.getMonth(), day).toISOString().slice(0, 10);
-      const dayOut = expenses.filter(x => x.due_date === dayDate).reduce((a, x) => a + Number(x.value), 0);
-      return { day: String(day).padStart(2, "0"), entradas: Math.round(dailyIn), saidas: dayOut };
+    const months: { key: string; label: string; year: number; month: number }[] = [];
+    for (let i = -6; i <= 5; i++) {
+      const d = new Date(monthRef.getFullYear(), monthRef.getMonth() + i, 1);
+      months.push({
+        key: `${d.getFullYear()}-${d.getMonth()}`,
+        label: d.toLocaleDateString("pt-BR", { month: "short" }).replace(".", "") + "/" + String(d.getFullYear()).slice(-2),
+        year: d.getFullYear(), month: d.getMonth(),
+      });
+    }
+
+    // Recorrências ativas (serviços + contratos + sociedades) — só contam a partir do início da recorrência
+    const recurringEntries = (year: number, month: number) => {
+      const monthStart = new Date(year, month, 1);
+      const monthEnd = new Date(year, month + 1, 0);
+      let total = 0;
+      services.filter(s => Number(s.recurrence_value) > 0).forEach(s => {
+        const start = s.recurrence_start_date ? new Date(s.recurrence_start_date) : null;
+        if (!start || start <= monthEnd) total += Number(s.recurrence_value);
+      });
+      contracts.filter(c => c.status === "Ativo").forEach(c => {
+        const start = c.recurrence_start_date ? new Date(c.recurrence_start_date) : null;
+        if (!start || start <= monthEnd) total += Number(c.monthly_value);
+      });
+      // Histórico/registros pontuais com value e sem recorrência: contam só no mês de início
+      services.filter(s => !Number(s.recurrence_value) && Number(s.value) > 0 && s.recurrence_start_date).forEach(s => {
+        const d = new Date(s.recurrence_start_date);
+        if (d.getFullYear() === year && d.getMonth() === month) total += Number(s.value);
+      });
+      return total;
+    };
+
+    return months.map(m => {
+      const entradas = recurringEntries(m.year, m.month);
+      const saidas = expenses
+        .filter(x => { const d = new Date(x.due_date); return d.getFullYear() === m.year && d.getMonth() === m.month; })
+        .reduce((a, x) => a + Number(x.value), 0);
+      return { month: m.label, entradas: Math.round(entradas), saidas: Math.round(saidas) };
     });
-  }, [monthRef, expenses, metrics.mrrGross]);
+  }, [monthRef, expenses, services, contracts]);
 
   // Receipt calendar — recorrências do mês ordenadas por dia
   const receiptCalendar = useMemo(() => {
