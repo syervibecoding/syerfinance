@@ -43,7 +43,28 @@ export default function Expenses() {
     const baseValue = Number(form.value);
     const total = Math.max(1, Number(form.installments_total ?? 1));
 
-    if (!editing && total > 1) {
+    if (!editing && form.is_recurring) {
+      // Recorrente: cria 12 meses adiante (renováveis depois)
+      const parentDate = new Date(form.due_date);
+      const rows = Array.from({ length: 12 }).map((_, i) => {
+        const d = new Date(parentDate);
+        d.setMonth(d.getMonth() + i);
+        return {
+          user_id: user.id,
+          description: form.description,
+          value: baseValue,
+          category: form.category,
+          due_date: d.toISOString().slice(0, 10),
+          status: i === 0 ? form.status : "Pendente",
+          is_recurring: true,
+          installments_total: 1,
+          installments_current: 1,
+        };
+      });
+      const { error } = await supabase.from("expenses").insert(rows);
+      if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); return; }
+      toast({ title: "Despesa recorrente criada", description: "12 meses lançados no fluxo." });
+    } else if (!editing && total > 1) {
       // Cria parcelas
       const parentDate = new Date(form.due_date);
       const rows = Array.from({ length: total }).map((_, i) => {
