@@ -96,6 +96,11 @@ export default function Dashboard() {
         const d = new Date(s.recurrence_start_date);
         if (d.getFullYear() === year && d.getMonth() === month) total += Number(s.value);
       });
+      // Pagamentos de implementação recebidos no mês
+      implPayments.forEach(p => {
+        const d = new Date(p.paid_date);
+        if (d.getFullYear() === year && d.getMonth() === month) total += Number(p.value);
+      });
       // Entradas históricas simuladas
       total += HISTORICAL_ENTRIES[`${year}-${month}`] ?? 0;
       return total;
@@ -108,7 +113,7 @@ export default function Dashboard() {
         .reduce((a, x) => a + Number(x.value), 0);
       return { month: m.label, entradas: Math.round(entradas * 100) / 100, saidas: Math.round(saidas * 100) / 100 };
     });
-  }, [monthRef, expenses, services, contracts]);
+  }, [monthRef, expenses, services, contracts, implPayments]);
 
   // Receipt calendar — recorrências do mês ordenadas por dia
   const receiptCalendar = useMemo(() => {
