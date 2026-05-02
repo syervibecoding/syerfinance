@@ -96,6 +96,11 @@ export default function Dashboard() {
         const d = new Date(s.recurrence_start_date);
         if (d.getFullYear() === year && d.getMonth() === month) total += Number(s.value);
       });
+      // Pagamentos de implementação recebidos no mês
+      implPayments.forEach(p => {
+        const d = new Date(p.paid_date);
+        if (d.getFullYear() === year && d.getMonth() === month) total += Number(p.value);
+      });
       // Entradas históricas simuladas
       total += HISTORICAL_ENTRIES[`${year}-${month}`] ?? 0;
       return total;
