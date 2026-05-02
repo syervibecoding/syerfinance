@@ -113,7 +113,7 @@ export default function Dashboard() {
         .reduce((a, x) => a + Number(x.value), 0);
       return { month: m.label, entradas: Math.round(entradas * 100) / 100, saidas: Math.round(saidas * 100) / 100 };
     });
-  }, [monthRef, expenses, services, contracts]);
+  }, [monthRef, expenses, services, contracts, implPayments]);
 
   // Receipt calendar — recorrências do mês ordenadas por dia
   const receiptCalendar = useMemo(() => {
