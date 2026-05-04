@@ -134,8 +134,23 @@ export default function Dashboard() {
       const day = parseInt(c.payment_day ?? "0", 10);
       if (day > 0) list.push({ client: c.name, day, value: Number(c.payment_value ?? 0), type: "Sociedade" });
     });
+    // Certificado Digital — registros pontuais do mês selecionado
+    services
+      .filter(s => s.category === "Certificado Digital" && s.recurrence_start_date && Number(s.value) > 0)
+      .forEach(s => {
+        const d = new Date(s.recurrence_start_date);
+        if (d.getFullYear() === monthRef.getFullYear() && d.getMonth() === monthRef.getMonth()) {
+          const qty = Number(s.recurrence_value ?? 0);
+          list.push({
+            client: `${s.client}${qty ? ` (${qty} cert.)` : ""}`,
+            day: d.getDate() || 1,
+            value: Number(s.value),
+            type: "Certificado Digital",
+          });
+        }
+      });
     return list.sort((a, b) => a.day - b.day);
-  }, [services, contracts, companies]);
+  }, [services, contracts, companies, monthRef]);
 
   return (
     <div className="space-y-6">
