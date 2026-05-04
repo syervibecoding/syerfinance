@@ -97,6 +97,8 @@ export default function CertificadoDigital() {
   const save = async () => {
     if (!user) return;
     const service_name = monthKey(Number(form.month), Number(form.year));
+    // Vincula ao fluxo de caixa: entra como receita pontual no mês selecionado (dia 01)
+    const recurrence_start_date = `${form.year}-${String(Number(form.month) + 1).padStart(2, "0")}-01`;
 
     const payload: any = {
       user_id: user.id,
@@ -106,6 +108,7 @@ export default function CertificadoDigital() {
       status: "Ativo",
       value: Number(form.value) || 0,
       recurrence_value: Number(form.quantity) || 0,
+      recurrence_start_date,
     };
 
     if (editing) {

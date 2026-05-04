@@ -37,7 +37,7 @@ export default function Dashboard() {
   }, []);
 
   const metrics = useMemo(() => {
-    const recurringServices = services.filter(s => Number(s.recurrence_value) > 0);
+    const recurringServices = services.filter(s => s.category !== "Certificado Digital" && Number(s.recurrence_value) > 0);
     const activeContracts = contracts.filter(c => c.status === "Ativo");
     const mrrGross = recurringServices.reduce((a, s) => a + Number(s.recurrence_value), 0)
       + activeContracts.reduce((a, c) => a + Number(c.monthly_value), 0);
@@ -83,7 +83,7 @@ export default function Dashboard() {
     const recurringEntries = (year: number, month: number) => {
       const monthEnd = new Date(year, month + 1, 0);
       let total = 0;
-      services.filter(s => Number(s.recurrence_value) > 0).forEach(s => {
+      services.filter(s => s.category !== "Certificado Digital" && Number(s.recurrence_value) > 0).forEach(s => {
         const start = s.recurrence_start_date ? new Date(s.recurrence_start_date) : null;
         if (!start || start <= monthEnd) total += Number(s.recurrence_value);
       });
@@ -92,7 +92,7 @@ export default function Dashboard() {
         if (!start || start <= monthEnd) total += Number(c.monthly_value);
       });
       // Histórico/registros pontuais com value e sem recorrência: contam só no mês de início
-      services.filter(s => !Number(s.recurrence_value) && Number(s.value) > 0 && s.recurrence_start_date).forEach(s => {
+      services.filter(s => (s.category === "Certificado Digital" || !Number(s.recurrence_value)) && Number(s.value) > 0 && s.recurrence_start_date).forEach(s => {
         const d = new Date(s.recurrence_start_date);
         if (d.getFullYear() === year && d.getMonth() === month) total += Number(s.value);
       });
@@ -118,7 +118,7 @@ export default function Dashboard() {
   // Receipt calendar — recorrências do mês ordenadas por dia
   const receiptCalendar = useMemo(() => {
     const list: { client: string; day: number; value: number; type: string }[] = [];
-    services.filter(s => Number(s.recurrence_value) > 0).forEach(s => {
+    services.filter(s => s.category !== "Certificado Digital" && Number(s.recurrence_value) > 0).forEach(s => {
       const val = Number(s.recurrence_value);
       if (s.split_payment && s.payment_day_2) {
         list.push({ client: `${s.client} (1ª parcela)`, day: s.payment_day ?? 1, value: val / 2, type: s.category });
