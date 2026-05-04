@@ -43,18 +43,35 @@ export default function Expenses() {
     const baseValue = Number(form.value);
     const total = Math.max(1, Number(form.installments_total ?? 1));
 
+    // Calcula vencimento mantendo o dia desejado; se o mês não tiver, usa o último dia útil
+    const computeDueDate = (baseISO: string, monthsAhead: number) => {
+      const [yStr, mStr, dStr] = baseISO.split("-");
+      const desiredDay = Number(dStr);
+      const target = new Date(Number(yStr), Number(mStr) - 1 + monthsAhead, 1);
+      const lastDayOfMonth = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate();
+      let day = Math.min(desiredDay, lastDayOfMonth);
+      let d = new Date(target.getFullYear(), target.getMonth(), day);
+      // Se o dia desejado não existe no mês (ex: 30 em fev), volta ao último dia útil
+      if (desiredDay > lastDayOfMonth) {
+        while (d.getDay() === 0 || d.getDay() === 6) {
+          d.setDate(d.getDate() - 1);
+        }
+      }
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const dd = String(d.getDate()).padStart(2, "0");
+      return `${yyyy}-${mm}-${dd}`;
+    };
+
     if (!editing && form.is_recurring) {
       // Recorrente: cria 12 meses adiante (renováveis depois)
-      const parentDate = new Date(form.due_date);
       const rows = Array.from({ length: 12 }).map((_, i) => {
-        const d = new Date(parentDate);
-        d.setMonth(d.getMonth() + i);
         return {
           user_id: user.id,
           description: form.description,
           value: baseValue,
           category: form.category,
-          due_date: d.toISOString().slice(0, 10),
+          due_date: computeDueDate(form.due_date, i),
           status: i === 0 ? form.status : "Pendente",
           is_recurring: true,
           installments_total: 1,
@@ -66,16 +83,13 @@ export default function Expenses() {
       toast({ title: "Despesa recorrente criada", description: "12 meses lançados no fluxo." });
     } else if (!editing && total > 1) {
       // Cria parcelas
-      const parentDate = new Date(form.due_date);
       const rows = Array.from({ length: total }).map((_, i) => {
-        const d = new Date(parentDate);
-        d.setMonth(d.getMonth() + i);
         return {
           user_id: user.id,
           description: `${form.description} (${i + 1}/${total})`,
           value: baseValue,
           category: form.category,
-          due_date: d.toISOString().slice(0, 10),
+          due_date: computeDueDate(form.due_date, i),
           status: i === 0 ? form.status : "Pendente",
           is_recurring: false,
           installments_total: total,
