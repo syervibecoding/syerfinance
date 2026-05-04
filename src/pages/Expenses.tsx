@@ -83,16 +83,13 @@ export default function Expenses() {
       toast({ title: "Despesa recorrente criada", description: "12 meses lançados no fluxo." });
     } else if (!editing && total > 1) {
       // Cria parcelas
-      const parentDate = new Date(form.due_date);
       const rows = Array.from({ length: total }).map((_, i) => {
-        const d = new Date(parentDate);
-        d.setMonth(d.getMonth() + i);
         return {
           user_id: user.id,
           description: `${form.description} (${i + 1}/${total})`,
           value: baseValue,
           category: form.category,
-          due_date: d.toISOString().slice(0, 10),
+          due_date: computeDueDate(form.due_date, i),
           status: i === 0 ? form.status : "Pendente",
           is_recurring: false,
           installments_total: total,
