@@ -71,7 +71,7 @@ export default function Expenses() {
           description: form.description,
           value: baseValue,
           category: form.category,
-          due_date: d.toISOString().slice(0, 10),
+          due_date: computeDueDate(form.due_date, i),
           status: i === 0 ? form.status : "Pendente",
           is_recurring: true,
           installments_total: 1,
