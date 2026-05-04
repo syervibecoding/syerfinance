@@ -131,8 +131,9 @@ export default function CertificadoDigital() {
     <div className="space-y-6">
       <PageHeader
         title="Certificado Digital"
-        description={`Cliente: ${CLIENT_FIXED}`}
-        action={<Button onClick={openNew}>Novo registro</Button>}
+        subtitle={`Cliente: ${CLIENT_FIXED}`}
+        onAdd={openNew}
+        addLabel="Novo registro"
       />
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -151,7 +152,7 @@ export default function CertificadoDigital() {
       </div>
 
       {sorted.length === 0 ? (
-        <EmptyState title="Nenhum registro ainda" description="Adicione o primeiro mês de certificado digital." />
+        <EmptyState message="Nenhum registro ainda. Adicione o primeiro mês de certificado digital." />
       ) : (
         <Card>
           <Table>
