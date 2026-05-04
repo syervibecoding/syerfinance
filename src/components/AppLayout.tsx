@@ -2,7 +2,7 @@ import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import {
   LayoutDashboard, Megaphone, Wrench, Globe, Calendar, Building2,
-  KanbanSquare, Receipt, Settings, LifeBuoy, LogOut, Layers
+  KanbanSquare, Receipt, Settings, LifeBuoy, LogOut, Layers, ShieldCheck
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -13,6 +13,7 @@ const nav = [
   { to: "/marketing", label: "Serviços Marketing", icon: Megaphone },
   { to: "/manutencao", label: "Manutenção & Web Ops", icon: Wrench },
   { to: "/sites", label: "Sites", icon: Globe },
+  { to: "/certificado-digital", label: "Certificado Digital", icon: ShieldCheck },
   { to: "/trafego", label: "Calendário de Tráfego", icon: Calendar },
   { to: "/portfolio", label: "Empresas & Sociedades", icon: Building2 },
   { to: "/atividades", label: "Quadro de Atividades", icon: KanbanSquare },
