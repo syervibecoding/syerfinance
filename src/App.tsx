@@ -8,6 +8,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import AppLayout from "@/components/AppLayout";
 import Dashboard from "./pages/Dashboard";
 import ServicesByCategory from "./pages/ServicesByCategory";
+import CertificadoDigital from "./pages/CertificadoDigital";
 import Maintenance from "./pages/Maintenance";
 import TrafficCalendar from "./pages/TrafficCalendar";
 import Tasks from "./pages/Tasks";
@@ -32,7 +33,7 @@ const App = () => (
               <Route path="/projetos" element={<ServicesByCategory category="Plataformas" title="Projetos & Plataformas" />} />
               <Route path="/marketing" element={<ServicesByCategory category="Marketing" title="Serviços Marketing" />} />
               <Route path="/sites" element={<ServicesByCategory category="Sites" title="Sites" />} />
-              <Route path="/certificado-digital" element={<ServicesByCategory category="Certificado Digital" title="Certificado Digital" />} />
+              <Route path="/certificado-digital" element={<CertificadoDigital />} />
               <Route path="/manutencao" element={<Maintenance />} />
               <Route path="/trafego" element={<TrafficCalendar />} />
               <Route path="/portfolio" element={<Portfolio />} />
