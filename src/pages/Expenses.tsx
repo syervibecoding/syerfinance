@@ -181,7 +181,19 @@ export default function Expenses() {
           <DialogHeader><DialogTitle>{editing ? "Editar despesa" : "Nova despesa"}</DialogTitle></DialogHeader>
           <div className="grid grid-cols-2 gap-4 py-2">
             <div className="col-span-2 space-y-1.5"><Label className="text-xs">Descrição</Label><Input value={form.description} onChange={e => set("description", e.target.value)} /></div>
-            <F label="Categoria"><Input value={form.category} onChange={e => set("category", e.target.value)} placeholder="Software, Equipe..." /></F>
+            <F label="Categoria">
+              <Select value={form.category} onValueChange={v => set("category", v)}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Software">Software</SelectItem>
+                  <SelectItem value="Equipe">Equipe</SelectItem>
+                  <SelectItem value="Marketing">Marketing</SelectItem>
+                  <SelectItem value="Infraestrutura">Infraestrutura</SelectItem>
+                  <SelectItem value="Certificado Digital">Certificado Digital</SelectItem>
+                  <SelectItem value="Outros">Outros</SelectItem>
+                </SelectContent>
+              </Select>
+            </F>
             <F label="Valor (por parcela)"><Input type="number" step="0.01" value={form.value} onChange={e => set("value", e.target.value)} /></F>
             <F label="1º vencimento"><Input type="date" value={form.due_date} onChange={e => set("due_date", e.target.value)} /></F>
             <F label="Status">
