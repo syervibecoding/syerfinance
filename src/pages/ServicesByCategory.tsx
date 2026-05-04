@@ -38,7 +38,7 @@ const statusVariant: Record<string, any> = {
 };
 
 interface Props {
-  category: "Marketing" | "Sites" | "Plataformas";
+  category: "Marketing" | "Sites" | "Plataformas" | "Certificado Digital";
   title: string;
 }
 
