@@ -1,55 +1,82 @@
-# Reorganização do menu lateral
+## Melhorias do Dashboard, Sidebar e Formulário de Serviços
 
-Reagrupar os 10 itens atuais em 4 seções com títulos e adicionar botão para colapsar a sidebar (modo só ícones).
+### 1) Sidebar — categorias colapsáveis (e mover Sociedades)
 
-## Nova estrutura do menu
+Hoje os grupos (`VISÃO GERAL`, `SERVIÇOS`, `OPERAÇÕES`, `FINANCEIRO`) só são rótulos. Vou transformar cada grupo em uma seção **colapsável** (expand/recolher) usando o componente `Collapsible` (já presente em `src/components/ui/collapsible.tsx`).
 
+Comportamento:
+- Cabeçalho do grupo vira clicável, com seta `ChevronDown`/`ChevronRight` à direita.
+- Estado por grupo persistido em `localStorage` (chave `sidebar:groups:open` → objeto `{ "Serviços": true, ... }`).
+- Por padrão, o grupo que contém a rota ativa fica **aberto**; os demais respeitam o último estado salvo (default: todos abertos na primeira visita).
+- Quando a sidebar inteira está colapsada (modo ícones, 64px), os grupos não mostram cabeçalho clicável — apenas o separador atual + ícones (igual hoje).
+
+**Reorganização dos grupos** (ponto 2 do pedido):
+- Mover **Empresas & Sociedades** de `OPERAÇÕES` para `FINANCEIRO`, já que representa receita de participação societária.
+- `OPERAÇÕES` fica com: Calendário de Tráfego, Quadro de Atividades.
+- `FINANCEIRO` fica com: Empresas & Sociedades, Despesas & Custos.
+
+Arquivo: `src/components/AppLayout.tsx`.
+
+---
+
+### 2) Dashboard — totalizador mensal de Entradas e Saídas
+
+Acima do gráfico "Fluxo Mensal de Entradas e Saídas" (ou no header do `Card`), adicionar três blocos compactos referentes ao **mês selecionado** (`monthRef`):
+
+- **Entradas do mês** — soma de `entradas` (recorrências de serviços + contratos + sociedades + cert. digital + pagamentos de implementação + entradas históricas) do mês atual, em verde.
+- **Saídas do mês** — soma de `saidas` do mês atual, em vermelho/warning.
+- **Saldo do mês** — `entradas - saidas`, com cor dinâmica (verde se ≥0, vermelho se <0).
+
+Implementação: derivar do `cashflowData` filtrando o item cujo `month` corresponde ao `monthRef` (precisa expor `key`/`year`/`month` no item, ou recalcular pelas mesmas regras). Layout: três pílulas pequenas no topo do card do gráfico, alinhadas à direita junto da legenda existente — ou um mini-grid de 3 colunas acima do gráfico.
+
+Arquivo: `src/pages/Dashboard.tsx`.
+
+---
+
+### 3) Formulário "Novo serviço" — reduzir confusão
+
+Diagnóstico do form atual (em `ServicesByCategory.tsx`):
+
+- Tem ~18 campos misturados em um único grid 2-colunas (cobrado, implementação, recorrência, período, início, dia pagamento, split, 2º dia, prazo, tráfego×5, contrato×2…).
+- Campos opcionais ficam sempre visíveis (split de pagamento, contrato, tráfego só aparecem na categoria Marketing).
+- **Não fica claro o que é obrigatório** para a plataforma "entender" o serviço (o cálculo de fluxo de caixa exige `recurrence_value` + `recurrence_start_date` + `payment_day`, mas nada sinaliza isso).
+- Campo "Valor cobrado" e "Implementação cobrada" geram dúvida: qual é qual? Se já cobra implementação à parte, o "valor" duplica?
+- Botão "Salvar" é genérico — após salvar pela primeira vez o dialog continua aberto para registrar pagamentos, sem feedback visual claro.
+
+**Melhorias propostas:**
+
+a) **Reorganizar em seções com títulos** (cabeçalhos pequenos uppercase, igual já existe no bloco de Tráfego):
 ```
-VISÃO GERAL
-  • Dashboard
-
-SERVIÇOS
-  • Projetos & Plataformas
-  • Serviços Marketing
-  • Sites
-  • Manutenção & Web Ops
-  • Certificado Digital
-
-OPERAÇÕES
-  • Calendário de Tráfego
-  • Quadro de Atividades
-  • Empresas & Sociedades
-
-FINANCEIRO
-  • Despesas & Custos
+[1] IDENTIFICAÇÃO        Cliente · Nome do serviço · Status · Categoria
+[2] COBRANÇA RECORRENTE  Valor mensal · Período · Início · Dia pagto · Split (toggle → revela 2º dia)
+[3] IMPLEMENTAÇÃO        Valor cobrado · (lista de pagamentos)
+[4] CONTRATO             Tem contrato? (toggle → revela Fim do contrato)
+[5] TRÁFEGO (só Marketing)
 ```
 
-Cada grupo tem um título pequeno em maiúsculas (`text-[11px] uppercase tracking-wider text-muted-foreground`) acima dos itens. Sem accordion — tudo sempre visível, só visualmente separado.
+b) **Marcar campos obrigatórios** com asterisco e validar no submit (Cliente, Nome, Categoria; e se houver recorrência: período + dia + início).
 
-## Botão de colapsar
+c) **Remover o campo "Valor cobrado" duplicado**: deixar só "Valor da recorrência" + "Implementação cobrada". O campo `value` continua salvando (compat), mas é preenchido automaticamente = `recurrence_value` para evitar a dupla entrada confusa. (Ele só é exibido para a categoria *Certificado Digital*, onde representa o valor pontual do mês.)
 
-- Botão na borda direita da sidebar (ícone de seta), também acessível por um trigger no header.
-- Estados: **expandida** (256px, com labels e títulos de grupo) ou **colapsada** (64px, só ícones centralizados, títulos de grupo viram um divisor fino).
-- Tooltip ao passar o mouse nos ícones quando colapsada, mostrando o nome do item.
-- Estado persistido em `localStorage` para lembrar a preferência entre sessões.
+d) **Esconder campos opcionais por trás de toggles**: "Pagamento dividido" só aparece "2º dia" se ligado (já tem disabled, vou ocultar de fato); "Tem contrato" só aparece "Fim do contrato" se ligado.
 
-## Como adicionar novas categorias depois
+e) **Mensagens de ajuda (helper text)** pequenas embaixo dos campos críticos: "Início da recorrência define a partir de qual mês entra no fluxo de caixa", "Dia de pagamento aparece no Calendário de Recebimentos".
 
-A lista `nav` em `AppLayout.tsx` vira uma estrutura agrupada:
+f) **Após salvar pela 1ª vez**: trocar o título do dialog para "Editar — registre os pagamentos da implementação" e destacar a seção de pagamentos (borda accent), deixando claro que o serviço já foi criado.
 
-```ts
-const navGroups = [
-  { label: "Visão Geral", items: [{ to: "/", label: "Dashboard", icon: ... }] },
-  { label: "Serviços", items: [...] },
-  { label: "Operações", items: [...] },
-  { label: "Financeiro", items: [...] },
-];
-```
+g) **Botão Salvar** com label dinâmico: "Criar serviço" (novo) / "Salvar alterações" (editando).
 
-Para criar uma categoria nova, basta adicionar um objeto `{ to, label, icon }` no grupo apropriado (ou criar um novo grupo).
+Arquivo: `src/pages/ServicesByCategory.tsx`.
 
-## Arquivos afetados
+---
 
-- `src/components/AppLayout.tsx` — substitui o array `nav` plano por `navGroups`, adiciona estado `collapsed` com persistência em localStorage, ajusta classes de largura, renderiza títulos de grupo e tooltips quando colapsado.
+### Detalhes técnicos (para referência)
 
-Sem mudanças no roteamento (`App.tsx`) nem no banco.
+- Sidebar: usar `Collapsible` do Radix com `open`/`onOpenChange` controlado por estado; estado num objeto `Record<string, boolean>` salvo em `localStorage`.
+- Dashboard: criar `monthTotals` via `useMemo` a partir de `cashflowData[idx do mês atual]`.
+- Form: criar pequenos sub-componentes `Section({title, children})` para reduzir verbosidade do JSX. Validação simples com `if (!form.client || !form.service_name) toast erro`.
+
+### Arquivos a alterar
+- `src/components/AppLayout.tsx` — grupos colapsáveis + mover Sociedades para Financeiro
+- `src/pages/Dashboard.tsx` — totalizadores Entradas/Saídas/Saldo do mês
+- `src/pages/ServicesByCategory.tsx` — reorganização em seções, validação, helper text, toggles condicionais, botão dinâmico

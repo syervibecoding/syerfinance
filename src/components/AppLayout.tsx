@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import {
   LayoutDashboard, Megaphone, Wrench, Globe, Calendar, Building2,
   KanbanSquare, Receipt, Settings, LifeBuoy, LogOut, Layers, ShieldCheck,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, ChevronDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -34,22 +34,24 @@ const navGroups: NavGroup[] = [
     items: [
       { to: "/trafego", label: "Calendário de Tráfego", icon: Calendar },
       { to: "/atividades", label: "Quadro de Atividades", icon: KanbanSquare },
-      { to: "/portfolio", label: "Empresas & Sociedades", icon: Building2 },
     ],
   },
   {
     label: "Financeiro",
     items: [
+      { to: "/portfolio", label: "Empresas & Sociedades", icon: Building2 },
       { to: "/despesas", label: "Despesas & Custos", icon: Receipt },
     ],
   },
 ];
 
 const STORAGE_KEY = "sidebar:collapsed";
+const GROUPS_KEY = "sidebar:groups:open";
 
 export default function AppLayout() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const handleLogout = async () => { await signOut(); navigate("/auth"); };
 
   const [collapsed, setCollapsed] = useState<boolean>(() => {
@@ -57,9 +59,37 @@ export default function AppLayout() {
     return window.localStorage.getItem(STORAGE_KEY) === "1";
   });
 
+  const [groupsOpen, setGroupsOpen] = useState<Record<string, boolean>>(() => {
+    if (typeof window === "undefined") return {};
+    try {
+      const raw = window.localStorage.getItem(GROUPS_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    // default: todos abertos
+    return Object.fromEntries(navGroups.map(g => [g.label, true]));
+  });
+
   useEffect(() => {
     window.localStorage.setItem(STORAGE_KEY, collapsed ? "1" : "0");
   }, [collapsed]);
+
+  useEffect(() => {
+    window.localStorage.setItem(GROUPS_KEY, JSON.stringify(groupsOpen));
+  }, [groupsOpen]);
+
+  // Garante que grupo da rota ativa esteja aberto
+  useEffect(() => {
+    const activeGroup = navGroups.find(g =>
+      g.items.some(i => i.end ? location.pathname === i.to : location.pathname.startsWith(i.to))
+    );
+    if (activeGroup && !groupsOpen[activeGroup.label]) {
+      setGroupsOpen(prev => ({ ...prev, [activeGroup.label]: true }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
+
+  const toggleGroup = (label: string) =>
+    setGroupsOpen(prev => ({ ...prev, [label]: !prev[label] }));
 
   const initial = (user?.email ?? "S").charAt(0).toUpperCase();
 
@@ -113,7 +143,6 @@ export default function AppLayout() {
             )}
           </div>
 
-          {/* Botão de colapsar (na borda direita) */}
           <button
             onClick={() => setCollapsed(c => !c)}
             aria-label={collapsed ? "Expandir menu" : "Recolher menu"}
@@ -124,19 +153,31 @@ export default function AppLayout() {
               : <ChevronLeft className="h-3.5 w-3.5" />}
           </button>
 
-          <nav className={cn("flex-1 py-4 overflow-y-auto", collapsed ? "px-2 space-y-3" : "px-3 space-y-4")}>
-            {navGroups.map((group) => (
-              <div key={group.label} className="space-y-0.5">
-                {collapsed ? (
-                  <div className="h-px bg-sidebar-border/60 mx-2 mb-1" aria-hidden />
-                ) : (
-                  <div className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/80">
-                    {group.label}
-                  </div>
-                )}
-                {group.items.map(renderItem)}
-              </div>
-            ))}
+          <nav className={cn("flex-1 py-4 overflow-y-auto", collapsed ? "px-2 space-y-3" : "px-3 space-y-3")}>
+            {navGroups.map((group) => {
+              const open = groupsOpen[group.label] ?? true;
+              return (
+                <div key={group.label} className="space-y-0.5">
+                  {collapsed ? (
+                    <>
+                      <div className="h-px bg-sidebar-border/60 mx-2 mb-1" aria-hidden />
+                      {group.items.map(renderItem)}
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => toggleGroup(group.label)}
+                        className="w-full flex items-center justify-between px-3 pb-1 pt-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/80 hover:text-foreground transition-colors"
+                      >
+                        <span>{group.label}</span>
+                        <ChevronDown className={cn("h-3 w-3 transition-transform", !open && "-rotate-90")} />
+                      </button>
+                      {open && group.items.map(renderItem)}
+                    </>
+                  )}
+                </div>
+              );
+            })}
           </nav>
 
           <div className={cn("border-t border-sidebar-border space-y-0.5", collapsed ? "p-2" : "p-3")}>

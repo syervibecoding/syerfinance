@@ -167,6 +167,15 @@ export default function Dashboard() {
     return { all, monthValue, monthQty, nextUpcoming };
   }, [services, monthRef]);
 
+  // Totais do mês selecionado (entradas, saídas, saldo)
+  const monthTotals = useMemo(() => {
+    const label = monthRef.toLocaleDateString("pt-BR", { month: "short" }).replace(".", "") + "/" + String(monthRef.getFullYear()).slice(-2);
+    const cur = cashflowData.find(c => c.month === label);
+    const entradas = cur?.entradas ?? 0;
+    const saidas = cur?.saidas ?? 0;
+    return { entradas, saidas, saldo: entradas - saidas };
+  }, [cashflowData, monthRef]);
+
   // Receipt calendar — recorrências do mês ordenadas por dia
   const receiptCalendar = useMemo(() => {
     const list: { client: string; day: number; value: number; type: string }[] = [];
