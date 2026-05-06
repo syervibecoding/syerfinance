@@ -103,8 +103,8 @@ export default function Dashboard() {
       });
       // Histórico/registros pontuais com value e sem recorrência: contam só no mês de início
       services.filter(s => (s.category === "Certificado Digital" || !Number(s.recurrence_value)) && Number(s.value) > 0 && s.recurrence_start_date).forEach(s => {
-        const d = new Date(s.recurrence_start_date);
-        if (d.getFullYear() === year && d.getMonth() === month) total += Number(s.value);
+        const d = parseLocalDate(s.recurrence_start_date);
+        if (d && d.getFullYear() === year && d.getMonth() === month) total += Number(s.value);
       });
       // Pagamentos de implementação recebidos no mês
       implPayments.forEach(p => {
