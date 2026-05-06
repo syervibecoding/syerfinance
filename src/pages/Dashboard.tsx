@@ -121,8 +121,8 @@ export default function Dashboard() {
       const certificados = services
         .filter(s => s.category === "Certificado Digital" && s.recurrence_start_date)
         .filter(s => {
-          const d = new Date(s.recurrence_start_date);
-          return d.getFullYear() === m.year && d.getMonth() === m.month;
+          const d = parseLocalDate(s.recurrence_start_date);
+          return d && d.getFullYear() === m.year && d.getMonth() === m.month;
         })
         .reduce((a, s) => a + Number(s.value || 0), 0);
       const entradasBase = entradasTotal - certificados;
