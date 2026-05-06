@@ -190,8 +190,8 @@ export default function Dashboard() {
     services
       .filter(s => s.category === "Certificado Digital" && s.recurrence_start_date && Number(s.value) > 0)
       .forEach(s => {
-        const d = new Date(s.recurrence_start_date);
-        if (d.getFullYear() === monthRef.getFullYear() && d.getMonth() === monthRef.getMonth()) {
+        const d = parseLocalDate(s.recurrence_start_date);
+        if (d && d.getFullYear() === monthRef.getFullYear() && d.getMonth() === monthRef.getMonth()) {
           const qty = Number(s.recurrence_value ?? 0);
           list.push({
             client: `${s.client}${qty ? ` (${qty} cert.)` : ""}`,
