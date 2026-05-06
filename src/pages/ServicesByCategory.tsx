@@ -15,7 +15,8 @@ import { PageHeader, EmptyState } from "@/components/PageHeader";
 import { ImplementationPayments } from "@/components/ImplementationPayments";
 import { brl } from "@/lib/format";
 import { toast } from "@/hooks/use-toast";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, CheckCircle2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const STATUSES = ["Pendente", "Em Produção", "Ativo", "Entregue", "Atrasado"] as const;
 const PERIODS = ["Mensal", "Anual"] as const;
@@ -76,27 +77,44 @@ export default function ServicesByCategory({ category, title }: Props) {
 
   const save = async () => {
     if (!user) return;
+    // Validação básica
+    if (!form.client?.trim() || !form.service_name?.trim()) {
+      return toast({ title: "Campos obrigatórios", description: "Preencha Cliente e Nome do serviço.", variant: "destructive" });
+    }
+    if (Number(form.recurrence_value) > 0) {
+      if (!form.recurrence_start_date || !form.payment_day) {
+        return toast({
+          title: "Recorrência incompleta",
+          description: "Para recorrência, informe Início e Dia de pagamento (necessário para o fluxo de caixa).",
+          variant: "destructive",
+        });
+      }
+    }
+
     const payload: any = { ...form, user_id: user.id, category };
+    // Mantém compat: se há recorrência, replica para 'value'; senão preserva o valor digitado
+    if (Number(payload.recurrence_value) > 0 && category !== "Certificado Digital") {
+      payload.value = Number(payload.recurrence_value);
+    }
     ["value","implementation_charged","recurrence_value","discount_percentage","last_recharge_value","daily_spend","traffic_balance"].forEach(k => payload[k] = Number(payload[k] ?? 0));
     ["payment_day","traffic_reload_day","payment_day_2"].forEach(k => payload[k] = payload[k] ? Number(payload[k]) : null);
     ["recurrence_start_date","contract_end_date","last_recharge_date"].forEach(k => { if (!payload[k]) payload[k] = null; });
     if (!payload.recurrence_period) payload.recurrence_period = null;
-    delete payload.implementation_paid; // agora derivado da tabela de pagamentos
+    delete payload.implementation_paid;
 
     if (editing) {
       const { error } = await supabase.from("services").update(payload).eq("id", editing.id);
       if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
       toast({ title: "Atualizado" });
       load();
+      setOpen(false);
     } else {
       const { data, error } = await supabase.from("services").insert(payload).select().single();
       if (error) return toast({ title: "Erro", description: error.message, variant: "destructive" });
-      toast({ title: "Criado", description: "Agora você pode registrar pagamentos da implementação." });
-      setEditing(data); // mantém aberto p/ adicionar pagamentos
+      toast({ title: "Serviço criado", description: "Agora você pode registrar pagamentos da implementação." });
+      setEditing(data);
       load();
-      return;
     }
-    setOpen(false);
   };
 
   const remove = async (id: string) => {
@@ -113,8 +131,11 @@ export default function ServicesByCategory({ category, title }: Props) {
 
   const handleDialogClose = (v: boolean) => {
     setOpen(v);
-    if (!v) load(); // recarrega totais após fechar (pagamentos podem ter mudado)
+    if (!v) load();
   };
+
+  const isMarketing = category === "Marketing";
+  const isCert = category === "Certificado Digital";
 
   return (
     <div>
@@ -133,7 +154,7 @@ export default function ServicesByCategory({ category, title }: Props) {
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right min-w-[180px]">Implementação</TableHead>
                 <TableHead className="text-right">Recorrência</TableHead>
-                {category === "Marketing" && <TableHead className="text-right">Saldo / Diário</TableHead>}
+                {isMarketing && <TableHead className="text-right">Saldo / Diário</TableHead>}
                 <TableHead>Prazo</TableHead><TableHead></TableHead>
               </TableRow>
             </TableHeader>
@@ -161,7 +182,7 @@ export default function ServicesByCategory({ category, title }: Props) {
                   <TableCell className="text-right tabular-nums text-muted-foreground">
                     {it.recurrence_value ? `${brl(it.recurrence_value)}/${it.recurrence_period === "Anual" ? "ano" : "mês"}` : "-"}
                   </TableCell>
-                  {category === "Marketing" && (
+                  {isMarketing && (
                     <TableCell className="text-right tabular-nums text-muted-foreground">
                       {brl(it.traffic_balance)} <span className="text-xs">/ {brl(it.daily_spend)}d</span>
                     </TableCell>
@@ -180,64 +201,160 @@ export default function ServicesByCategory({ category, title }: Props) {
 
       <Dialog open={open} onOpenChange={handleDialogClose}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{editing ? "Editar serviço" : "Novo serviço"}</DialogTitle></DialogHeader>
-          <div className="grid grid-cols-2 gap-4 py-2">
-            <Field label="Cliente"><Input value={form.client} onChange={e => set("client", e.target.value)} /></Field>
-            <Field label="Nome do serviço"><Input value={form.service_name} onChange={e => set("service_name", e.target.value)} /></Field>
-            <Field label="Status">
-              <Select value={form.status} onValueChange={v => set("status", v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{STATUSES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
-              </Select>
-            </Field>
-            <Field label="Valor cobrado (R$)"><Input type="number" step="0.01" value={form.value} onChange={e => set("value", e.target.value)} /></Field>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {editing ? (
+                <>
+                  <CheckCircle2 className="h-5 w-5 text-success" />
+                  Editar serviço — {editing.client}
+                </>
+              ) : "Novo serviço"}
+            </DialogTitle>
+            {editing && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Serviço salvo. Você pode registrar pagamentos da implementação na seção abaixo.
+              </p>
+            )}
+          </DialogHeader>
 
-            <Field label="Implementação cobrada (R$)"><Input type="number" step="0.01" value={form.implementation_charged} onChange={e => set("implementation_charged", e.target.value)} /></Field>
-            <div />
+          <div className="space-y-5 py-2">
+            {/* SEÇÃO 1: Identificação */}
+            <Section title="Identificação">
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Cliente" required>
+                  <Input value={form.client} onChange={e => set("client", e.target.value)} placeholder="Nome do cliente" />
+                </Field>
+                <Field label="Nome do serviço" required>
+                  <Input value={form.service_name} onChange={e => set("service_name", e.target.value)} placeholder="Ex: Gestão de tráfego" />
+                </Field>
+                <Field label="Status">
+                  <Select value={form.status} onValueChange={v => set("status", v)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>{STATUSES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                  </Select>
+                </Field>
+                <Field label="Prazo (texto livre)">
+                  <Input value={form.deadline} onChange={e => set("deadline", e.target.value)} placeholder="ex: 05 Abr" />
+                </Field>
+              </div>
+            </Section>
 
-            <ImplementationPayments
-              serviceId={editing?.id ?? null}
-              charged={Number(form.implementation_charged ?? 0)}
-            />
-
-            <Field label="Recorrência (R$)"><Input type="number" step="0.01" value={form.recurrence_value} onChange={e => set("recurrence_value", e.target.value)} /></Field>
-            <Field label="Período">
-              <Select value={form.recurrence_period ?? ""} onValueChange={v => set("recurrence_period", v)}>
-                <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-                <SelectContent>{PERIODS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
-              </Select>
-            </Field>
-            <Field label="Início recorrência"><Input type="date" value={form.recurrence_start_date} onChange={e => set("recurrence_start_date", e.target.value)} /></Field>
-            <Field label="Dia de pagamento"><Input type="number" min={1} max={31} value={form.payment_day ?? ""} onChange={e => set("payment_day", e.target.value)} /></Field>
-            <Field label="Pagamento dividido (50/50)?">
-              <div className="flex items-center h-10"><Switch checked={form.split_payment} onCheckedChange={v => set("split_payment", v)} /></div>
-            </Field>
-            <Field label="2º dia de pagamento">
-              <Input type="number" min={1} max={31} value={form.payment_day_2 ?? ""} onChange={e => set("payment_day_2", e.target.value)} disabled={!form.split_payment} placeholder={form.split_payment ? "ex: 20" : "—"} />
-            </Field>
-            <Field label="Prazo (texto livre)"><Input value={form.deadline} onChange={e => set("deadline", e.target.value)} placeholder="ex: 05 Abr" /></Field>
-
-            {category === "Marketing" && (
-              <>
-                <div className="col-span-2 mt-2 pt-3 border-t">
-                  <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Tráfego de Anúncios</div>
+            {/* SEÇÃO 2: Cobrança recorrente (oculta para Cert. Digital) */}
+            {!isCert && (
+              <Section
+                title="Cobrança recorrente"
+                hint="Define o que entra mensalmente no fluxo de caixa do Dashboard."
+              >
+                <div className="grid grid-cols-2 gap-4">
+                  <Field
+                    label="Valor da recorrência (R$)"
+                    helper="Deixe 0 se for serviço pontual sem mensalidade."
+                  >
+                    <Input type="number" step="0.01" value={form.recurrence_value} onChange={e => set("recurrence_value", e.target.value)} />
+                  </Field>
+                  <Field label="Período">
+                    <Select value={form.recurrence_period ?? ""} onValueChange={v => set("recurrence_period", v)}>
+                      <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                      <SelectContent>{PERIODS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </Field>
+                  <Field
+                    label="Início da recorrência"
+                    required={Number(form.recurrence_value) > 0}
+                    helper="A partir desta data o valor entra no fluxo mensal."
+                  >
+                    <Input type="date" value={form.recurrence_start_date} onChange={e => set("recurrence_start_date", e.target.value)} />
+                  </Field>
+                  <Field
+                    label="Dia de pagamento"
+                    required={Number(form.recurrence_value) > 0}
+                    helper="Aparece no Calendário de Recebimentos."
+                  >
+                    <Input type="number" min={1} max={31} value={form.payment_day ?? ""} onChange={e => set("payment_day", e.target.value)} placeholder="1-31" />
+                  </Field>
+                  <Field label="Pagamento dividido (50/50)?">
+                    <div className="flex items-center h-10">
+                      <Switch checked={form.split_payment} onCheckedChange={v => set("split_payment", v)} />
+                    </div>
+                  </Field>
+                  {form.split_payment && (
+                    <Field label="2º dia de pagamento">
+                      <Input type="number" min={1} max={31} value={form.payment_day_2 ?? ""} onChange={e => set("payment_day_2", e.target.value)} placeholder="ex: 20" />
+                    </Field>
+                  )}
                 </div>
-                <Field label="Última recarga (R$)"><Input type="number" step="0.01" value={form.last_recharge_value} onChange={e => set("last_recharge_value", e.target.value)} /></Field>
-                <Field label="Data da última recarga"><Input type="date" value={form.last_recharge_date} onChange={e => set("last_recharge_date", e.target.value)} /></Field>
-                <Field label="Gasto médio diário (R$)"><Input type="number" step="0.01" value={form.daily_spend} onChange={e => set("daily_spend", e.target.value)} /></Field>
-                <Field label="Saldo atual (R$)"><Input type="number" step="0.01" value={form.traffic_balance} onChange={e => set("traffic_balance", e.target.value)} /></Field>
-                <Field label="Dia de recarga preferido"><Input type="number" min={1} max={31} value={form.traffic_reload_day ?? ""} onChange={e => set("traffic_reload_day", e.target.value)} /></Field>
-              </>
+              </Section>
             )}
 
-            <Field label="Tem contrato?">
-              <div className="flex items-center h-10"><Switch checked={form.has_contract} onCheckedChange={v => set("has_contract", v)} /></div>
-            </Field>
-            <Field label="Fim do contrato"><Input type="date" value={form.contract_end_date} onChange={e => set("contract_end_date", e.target.value)} disabled={!form.has_contract} /></Field>
+            {/* SEÇÃO Cert. Digital: valor pontual */}
+            {isCert && (
+              <Section title="Registro do mês" hint="Cada certificado entra no fluxo no mês informado.">
+                <div className="grid grid-cols-2 gap-4">
+                  <Field label="Valor (R$)" required>
+                    <Input type="number" step="0.01" value={form.value} onChange={e => set("value", e.target.value)} />
+                  </Field>
+                  <Field label="Quantidade">
+                    <Input type="number" value={form.recurrence_value} onChange={e => set("recurrence_value", e.target.value)} />
+                  </Field>
+                  <Field label="Mês de referência" required helper="Define em qual mês entra no fluxo de caixa.">
+                    <Input type="date" value={form.recurrence_start_date} onChange={e => set("recurrence_start_date", e.target.value)} />
+                  </Field>
+                </div>
+              </Section>
+            )}
+
+            {/* SEÇÃO 3: Implementação */}
+            {!isCert && (
+              <Section title="Implementação (cobrança única)" hint="Valor cobrado uma única vez pela montagem/setup.">
+                <div className="grid grid-cols-2 gap-4 mb-3">
+                  <Field label="Valor cobrado (R$)">
+                    <Input type="number" step="0.01" value={form.implementation_charged} onChange={e => set("implementation_charged", e.target.value)} />
+                  </Field>
+                </div>
+                <div className={cn("rounded-lg", editing && Number(form.implementation_charged) > 0 && "border border-accent/40 p-3 bg-accent/5")}>
+                  <ImplementationPayments
+                    serviceId={editing?.id ?? null}
+                    charged={Number(form.implementation_charged ?? 0)}
+                  />
+                </div>
+              </Section>
+            )}
+
+            {/* SEÇÃO 4: Contrato */}
+            {!isCert && (
+              <Section title="Contrato">
+                <div className="grid grid-cols-2 gap-4">
+                  <Field label="Tem contrato?">
+                    <div className="flex items-center h-10">
+                      <Switch checked={form.has_contract} onCheckedChange={v => set("has_contract", v)} />
+                    </div>
+                  </Field>
+                  {form.has_contract && (
+                    <Field label="Fim do contrato">
+                      <Input type="date" value={form.contract_end_date} onChange={e => set("contract_end_date", e.target.value)} />
+                    </Field>
+                  )}
+                </div>
+              </Section>
+            )}
+
+            {/* SEÇÃO 5: Tráfego (só Marketing) */}
+            {isMarketing && (
+              <Section title="Tráfego de Anúncios">
+                <div className="grid grid-cols-2 gap-4">
+                  <Field label="Última recarga (R$)"><Input type="number" step="0.01" value={form.last_recharge_value} onChange={e => set("last_recharge_value", e.target.value)} /></Field>
+                  <Field label="Data da última recarga"><Input type="date" value={form.last_recharge_date} onChange={e => set("last_recharge_date", e.target.value)} /></Field>
+                  <Field label="Gasto médio diário (R$)"><Input type="number" step="0.01" value={form.daily_spend} onChange={e => set("daily_spend", e.target.value)} /></Field>
+                  <Field label="Saldo atual (R$)"><Input type="number" step="0.01" value={form.traffic_balance} onChange={e => set("traffic_balance", e.target.value)} /></Field>
+                  <Field label="Dia de recarga preferido"><Input type="number" min={1} max={31} value={form.traffic_reload_day ?? ""} onChange={e => set("traffic_reload_day", e.target.value)} /></Field>
+                </div>
+              </Section>
+            )}
           </div>
+
           <DialogFooter>
             <Button variant="ghost" onClick={() => handleDialogClose(false)}>Fechar</Button>
-            <Button onClick={save}>Salvar</Button>
+            <Button onClick={save}>{editing ? "Salvar alterações" : "Criar serviço"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -245,6 +362,27 @@ export default function ServicesByCategory({ category, title }: Props) {
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return <div className="space-y-1.5"><Label className="text-xs">{label}</Label>{children}</div>;
+function Section({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-3">
+      <div className="border-b pb-1.5">
+        <div className="text-xs font-semibold uppercase tracking-[0.12em] text-foreground">{title}</div>
+        {hint && <div className="text-[11px] text-muted-foreground mt-0.5">{hint}</div>}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function Field({ label, required, helper, children }: { label: string; required?: boolean; helper?: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-xs flex items-center gap-1">
+        {label}
+        {required && <span className="text-destructive">*</span>}
+      </Label>
+      {children}
+      {helper && <div className="text-[10px] text-muted-foreground leading-tight">{helper}</div>}
+    </div>
+  );
 }
