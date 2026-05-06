@@ -120,7 +120,8 @@ export default function Dashboard() {
 
     return months.map(m => {
       const entradasTotal = recurringEntries(m.year, m.month);
-      const certificados = services
+      const hasOverride = HISTORICAL_ENTRIES[`${m.year}-${m.month}`] !== undefined;
+      const certificados = hasOverride ? 0 : services
         .filter(s => s.category === "Certificado Digital" && s.recurrence_start_date)
         .filter(s => {
           const d = parseLocalDate(s.recurrence_start_date);
