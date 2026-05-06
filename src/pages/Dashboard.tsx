@@ -91,6 +91,10 @@ export default function Dashboard() {
 
     // Recorrências ativas (serviços + contratos + sociedades) — só contam a partir do início da recorrência
     const recurringEntries = (year: number, month: number) => {
+      // Override histórico: se houver valor fixo para o mês, ignora cálculos e usa o valor fixo
+      const override = HISTORICAL_ENTRIES[`${year}-${month}`];
+      if (override !== undefined) return override;
+
       const monthEnd = new Date(year, month + 1, 0);
       let total = 0;
       services.filter(s => s.category !== "Certificado Digital" && Number(s.recurrence_value) > 0).forEach(s => {
@@ -111,14 +115,13 @@ export default function Dashboard() {
         const d = new Date(p.paid_date);
         if (d.getFullYear() === year && d.getMonth() === month) total += Number(p.value);
       });
-      // Entradas históricas simuladas
-      total += HISTORICAL_ENTRIES[`${year}-${month}`] ?? 0;
       return total;
     };
 
     return months.map(m => {
       const entradasTotal = recurringEntries(m.year, m.month);
-      const certificados = services
+      const hasOverride = HISTORICAL_ENTRIES[`${m.year}-${m.month}`] !== undefined;
+      const certificados = hasOverride ? 0 : services
         .filter(s => s.category === "Certificado Digital" && s.recurrence_start_date)
         .filter(s => {
           const d = parseLocalDate(s.recurrence_start_date);
