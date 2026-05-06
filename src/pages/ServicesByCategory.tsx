@@ -310,6 +310,20 @@ export default function ServicesByCategory({ category, title }: Props) {
                   <Field label="Valor cobrado (R$)">
                     <Input type="number" step="0.01" value={form.implementation_charged} onChange={e => set("implementation_charged", e.target.value)} />
                   </Field>
+                  <Field label="% de desconto" helper="Ex: 10 (sem o símbolo %).">
+                    <Input type="number" step="0.01" min={0} max={100} value={form.discount_percentage} onChange={e => set("discount_percentage", e.target.value)} placeholder="0" />
+                  </Field>
+                  <Field label="Condição do desconto" helper="Ex: 'no Pix', 'à vista', '1ª parcela'.">
+                    <Input value={form.discount_type ?? ""} onChange={e => set("discount_type", e.target.value)} placeholder="ex: no Pix" />
+                  </Field>
+                  {Number(form.implementation_charged) > 0 && Number(form.discount_percentage) > 0 && (
+                    <Field label="Valor com desconto">
+                      <div className="h-10 flex items-center px-3 rounded-md bg-success-soft text-success text-sm font-semibold tabular-nums">
+                        {brl(Number(form.implementation_charged) * (1 - Number(form.discount_percentage) / 100))}
+                        {form.discount_type && <span className="ml-1.5 text-[10px] font-normal opacity-80">({form.discount_type})</span>}
+                      </div>
+                    </Field>
+                  )}
                 </div>
                 <div className={cn("rounded-lg", editing && Number(form.implementation_charged) > 0 && "border border-accent/40 p-3 bg-accent/5")}>
                   <ImplementationPayments
