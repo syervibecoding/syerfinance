@@ -1,39 +1,55 @@
-## Problema
+# Reorganização do menu lateral
 
-O registro de Certificado Digital de abril/2026 (R$ 300, CM Contábil) **já está sendo somado** ao fluxo de caixa do Dashboard — o tooltip de abril mostra R$ 5.920 (que inclui os R$ 300). Porém, do ponto de vista do usuário, ele "não vê" porque:
+Reagrupar os 10 itens atuais em 4 seções com títulos e adicionar botão para colapsar a sidebar (modo só ícones).
 
-1. No **gráfico de Fluxo Mensal**, o valor entra somado às outras entradas, sem distinção visual.
-2. No **Calendário de Recebimentos** lateral, o registro só aparece quando o mês selecionado no Dashboard é exatamente abril/2026. Hoje (maio/2026) o calendário lateral não mostra abril, então parece que "sumiu".
-3. Não existe nenhum KPI ou indicador dedicado mostrando o total faturado em Certificados Digitais.
+## Nova estrutura do menu
 
-## Solução
+```
+VISÃO GERAL
+  • Dashboard
 
-### 1. Card KPI dedicado "Certificados Digitais (mês)"
-Adicionar na linha de mini-KPIs do Dashboard um novo card mostrando:
-- Valor faturado em Certificados Digitais no mês selecionado
-- Quantidade de certificados emitidos no mês
-- Hint: "CM Contábil — N registros"
+SERVIÇOS
+  • Projetos & Plataformas
+  • Serviços Marketing
+  • Sites
+  • Manutenção & Web Ops
+  • Certificado Digital
 
-### 2. Destaque no Calendário de Recebimentos
-- Manter a lógica atual (registros do mês selecionado aparecem na lista lateral).
-- Adicionar um **badge visual** no item para diferenciar de recorrências mensais.
-- Quando o mês selecionado **não tem** registro mas existe registro nos meses anteriores/seguintes, mostrar um aviso suave: "Próximo certificado: abr/26 — R$ 300".
+OPERAÇÕES
+  • Calendário de Tráfego
+  • Quadro de Atividades
+  • Empresas & Sociedades
 
-### 3. Diferenciar no gráfico de Fluxo Mensal
-Adicionar uma terceira barra/linha (ou tooltip detalhado) que destaque "Certif. Digital" como item separado dentro de "entradas". Implementação: separar `cashflowData` em `entradas`, `saidas`, e `certificados` (subcomponente das entradas) — exibido como barra empilhada ou via tooltip que detalha a composição.
+FINANCEIRO
+  • Despesas & Custos
+```
 
-### 4. Garantir visibilidade independente do mês
-Adicionar abaixo dos KPIs uma faixa horizontal compacta listando **todos os meses com Certificado Digital cadastrado** (chips clicáveis) — clicar muda o `monthRef` para aquele mês. Assim o usuário enxerga rapidamente todo o histórico, mesmo sem navegar mês a mês.
+Cada grupo tem um título pequeno em maiúsculas (`text-[11px] uppercase tracking-wider text-muted-foreground`) acima dos itens. Sem accordion — tudo sempre visível, só visualmente separado.
+
+## Botão de colapsar
+
+- Botão na borda direita da sidebar (ícone de seta), também acessível por um trigger no header.
+- Estados: **expandida** (256px, com labels e títulos de grupo) ou **colapsada** (64px, só ícones centralizados, títulos de grupo viram um divisor fino).
+- Tooltip ao passar o mouse nos ícones quando colapsada, mostrando o nome do item.
+- Estado persistido em `localStorage` para lembrar a preferência entre sessões.
+
+## Como adicionar novas categorias depois
+
+A lista `nav` em `AppLayout.tsx` vira uma estrutura agrupada:
+
+```ts
+const navGroups = [
+  { label: "Visão Geral", items: [{ to: "/", label: "Dashboard", icon: ... }] },
+  { label: "Serviços", items: [...] },
+  { label: "Operações", items: [...] },
+  { label: "Financeiro", items: [...] },
+];
+```
+
+Para criar uma categoria nova, basta adicionar um objeto `{ to, label, icon }` no grupo apropriado (ou criar um novo grupo).
 
 ## Arquivos afetados
 
-- `src/pages/Dashboard.tsx` — adicionar KPI, chips de meses, ajustar gráfico e calendário.
+- `src/components/AppLayout.tsx` — substitui o array `nav` plano por `navGroups`, adiciona estado `collapsed` com persistência em localStorage, ajusta classes de largura, renderiza títulos de grupo e tooltips quando colapsado.
 
-## Detalhes técnicos
-
-- Filtro base: `services.filter(s => s.category === "Certificado Digital" && s.recurrence_start_date)`
-- Métricas do mês: somar `value` e `recurrence_value` (quantidade) onde a data bate com `monthRef`.
-- Chips de histórico: agrupar por `YYYY-MM` ordenado desc, mostrar até 12 mais recentes.
-- Gráfico empilhado: usar `<Bar dataKey="entradasBase" stackId="in" />` + `<Bar dataKey="certificados" stackId="in" />` mantendo soma total visualmente igual.
-
-Não há mudanças de banco — toda integração já existe.
+Sem mudanças no roteamento (`App.tsx`) nem no banco.
