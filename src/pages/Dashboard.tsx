@@ -108,13 +108,55 @@ export default function Dashboard() {
     };
 
     return months.map(m => {
-      const entradas = recurringEntries(m.year, m.month);
+      const entradasTotal = recurringEntries(m.year, m.month);
+      const certificados = services
+        .filter(s => s.category === "Certificado Digital" && s.recurrence_start_date)
+        .filter(s => {
+          const d = new Date(s.recurrence_start_date);
+          return d.getFullYear() === m.year && d.getMonth() === m.month;
+        })
+        .reduce((a, s) => a + Number(s.value || 0), 0);
+      const entradasBase = entradasTotal - certificados;
       const saidas = expenses
         .filter(x => { const d = new Date(x.due_date); return d.getFullYear() === m.year && d.getMonth() === m.month; })
         .reduce((a, x) => a + Number(x.value), 0);
-      return { month: m.label, entradas: Math.round(entradas * 100) / 100, saidas: Math.round(saidas * 100) / 100 };
+      return {
+        month: m.label,
+        entradasBase: Math.round(entradasBase * 100) / 100,
+        certificados: Math.round(certificados * 100) / 100,
+        entradas: Math.round(entradasTotal * 100) / 100,
+        saidas: Math.round(saidas * 100) / 100,
+      };
     });
   }, [monthRef, expenses, services, contracts, implPayments]);
+
+  // Métricas e histórico de Certificado Digital
+  const certData = useMemo(() => {
+    const all = services
+      .filter(s => s.category === "Certificado Digital" && s.recurrence_start_date)
+      .map(s => ({
+        date: new Date(s.recurrence_start_date),
+        value: Number(s.value || 0),
+        qty: Number(s.recurrence_value || 0),
+      }))
+      .sort((a, b) => b.date.getTime() - a.date.getTime());
+
+    const monthValue = all
+      .filter(c => c.date.getFullYear() === monthRef.getFullYear() && c.date.getMonth() === monthRef.getMonth())
+      .reduce((a, c) => a + c.value, 0);
+    const monthQty = all
+      .filter(c => c.date.getFullYear() === monthRef.getFullYear() && c.date.getMonth() === monthRef.getMonth())
+      .reduce((a, c) => a + c.qty, 0);
+
+    // próximo certificado se mês atual não tem
+    const nextUpcoming = monthValue === 0
+      ? all
+          .filter(c => c.date >= new Date(monthRef.getFullYear(), monthRef.getMonth(), 1))
+          .sort((a, b) => a.date.getTime() - b.date.getTime())[0]
+      : null;
+
+    return { all, monthValue, monthQty, nextUpcoming };
+  }, [services, monthRef]);
 
   // Receipt calendar — recorrências do mês ordenadas por dia
   const receiptCalendar = useMemo(() => {
