@@ -12,6 +12,15 @@ import { Button } from "@/components/ui/button";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from "recharts";
 import { cn } from "@/lib/utils";
 
+// Parse 'YYYY-MM-DD' como data LOCAL (evita shift de fuso que joga dia 01 para o mês anterior)
+function parseLocalDate(s: string | null | undefined): Date | null {
+  if (!s) return null;
+  const iso = String(s).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]));
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? null : d;
+}
+
 export default function Dashboard() {
   const [services, setServices] = useState<any[]>([]);
   const [contracts, setContracts] = useState<any[]>([]);
