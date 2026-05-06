@@ -144,7 +144,7 @@ export default function Dashboard() {
     const all = services
       .filter(s => s.category === "Certificado Digital" && s.recurrence_start_date)
       .map(s => ({
-        date: new Date(s.recurrence_start_date),
+        date: parseLocalDate(s.recurrence_start_date) as Date,
         value: Number(s.value || 0),
         qty: Number(s.recurrence_value || 0),
       }))
