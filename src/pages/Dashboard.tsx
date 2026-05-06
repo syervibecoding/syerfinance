@@ -6,8 +6,9 @@ import { PageHeader } from "@/components/PageHeader";
 import { brl, brlCompact, sameMonth, daysInMonth, monthLabel } from "@/lib/format";
 import {
   TrendingUp, ArrowUpRight, CreditCard, Users, Calendar as CalIcon,
-  Receipt as ReceiptIcon, Target, Wallet,
+  Receipt as ReceiptIcon, Target, Wallet, ShieldCheck,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from "recharts";
 import { cn } from "@/lib/utils";
 
@@ -107,13 +108,55 @@ export default function Dashboard() {
     };
 
     return months.map(m => {
-      const entradas = recurringEntries(m.year, m.month);
+      const entradasTotal = recurringEntries(m.year, m.month);
+      const certificados = services
+        .filter(s => s.category === "Certificado Digital" && s.recurrence_start_date)
+        .filter(s => {
+          const d = new Date(s.recurrence_start_date);
+          return d.getFullYear() === m.year && d.getMonth() === m.month;
+        })
+        .reduce((a, s) => a + Number(s.value || 0), 0);
+      const entradasBase = entradasTotal - certificados;
       const saidas = expenses
         .filter(x => { const d = new Date(x.due_date); return d.getFullYear() === m.year && d.getMonth() === m.month; })
         .reduce((a, x) => a + Number(x.value), 0);
-      return { month: m.label, entradas: Math.round(entradas * 100) / 100, saidas: Math.round(saidas * 100) / 100 };
+      return {
+        month: m.label,
+        entradasBase: Math.round(entradasBase * 100) / 100,
+        certificados: Math.round(certificados * 100) / 100,
+        entradas: Math.round(entradasTotal * 100) / 100,
+        saidas: Math.round(saidas * 100) / 100,
+      };
     });
   }, [monthRef, expenses, services, contracts, implPayments]);
+
+  // Métricas e histórico de Certificado Digital
+  const certData = useMemo(() => {
+    const all = services
+      .filter(s => s.category === "Certificado Digital" && s.recurrence_start_date)
+      .map(s => ({
+        date: new Date(s.recurrence_start_date),
+        value: Number(s.value || 0),
+        qty: Number(s.recurrence_value || 0),
+      }))
+      .sort((a, b) => b.date.getTime() - a.date.getTime());
+
+    const monthValue = all
+      .filter(c => c.date.getFullYear() === monthRef.getFullYear() && c.date.getMonth() === monthRef.getMonth())
+      .reduce((a, c) => a + c.value, 0);
+    const monthQty = all
+      .filter(c => c.date.getFullYear() === monthRef.getFullYear() && c.date.getMonth() === monthRef.getMonth())
+      .reduce((a, c) => a + c.qty, 0);
+
+    // próximo certificado se mês atual não tem
+    const nextUpcoming = monthValue === 0
+      ? all
+          .filter(c => c.date >= new Date(monthRef.getFullYear(), monthRef.getMonth(), 1))
+          .sort((a, b) => a.date.getTime() - b.date.getTime())[0]
+      : null;
+
+    return { all, monthValue, monthQty, nextUpcoming };
+  }, [services, monthRef]);
 
   // Receipt calendar — recorrências do mês ordenadas por dia
   const receiptCalendar = useMemo(() => {
@@ -202,11 +245,49 @@ export default function Dashboard() {
       </div>
 
       {/* Linha 2: Mini KPIs com ícone */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <IconKpi icon={CreditCard} tone="info" label="SALDO DEVEDOR (IMPL.)" value={brl(metrics.balanceDue).replace(/\,\d{2}$/, "")} hint="Total a receber de implementações" />
         <IconKpi icon={Users} tone="success" label="CLIENTES RECORRENTES" value={String(metrics.recurringClients)} hint="Com contrato ativo e recorrência" />
         <IconKpi icon={CalIcon} tone="warning" label="RECEBIMENTO MÉDIO" value={`${brlCompact(metrics.dailyAverage)}/dia`} hint="Média diária de entradas recorrentes" />
+        <IconKpi
+          icon={ShieldCheck}
+          tone="info"
+          label="CERTIFICADOS DIGITAIS"
+          value={brl(certData.monthValue).replace(/\,\d{2}$/, "")}
+          hint={certData.monthQty > 0
+            ? `CM Contábil — ${certData.monthQty} certificado${certData.monthQty > 1 ? "s" : ""} no mês`
+            : (certData.nextUpcoming
+                ? `Próximo: ${certData.nextUpcoming.date.toLocaleDateString("pt-BR", { month: "short", year: "2-digit" })} — ${brl(certData.nextUpcoming.value)}`
+                : "Nenhum registro no mês")}
+        />
       </div>
+
+      {/* Histórico de meses com Certificado Digital — chips clicáveis */}
+      {certData.all.length > 0 && (
+        <Card>
+          <CardContent className="p-4 flex items-center gap-3 flex-wrap">
+            <span className="text-[10px] font-semibold tracking-[0.15em] uppercase text-muted-foreground flex items-center gap-1.5">
+              <ShieldCheck className="h-3.5 w-3.5" /> Histórico Cert. Digital
+            </span>
+            <div className="flex flex-wrap gap-2">
+              {certData.all.slice(0, 12).map((c, i) => {
+                const isCurrent = c.date.getFullYear() === monthRef.getFullYear() && c.date.getMonth() === monthRef.getMonth();
+                return (
+                  <Button
+                    key={i}
+                    size="sm"
+                    variant={isCurrent ? "default" : "outline"}
+                    className="h-7 text-xs"
+                    onClick={() => setMonthRef(new Date(c.date.getFullYear(), c.date.getMonth(), 1))}
+                  >
+                    {c.date.toLocaleDateString("pt-BR", { month: "short", year: "2-digit" })} · {brl(c.value).replace(/\,\d{2}$/, "")}
+                  </Button>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Linha 3: Fluxo de Caixa + Calendário de Recebimentos */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -216,8 +297,9 @@ export default function Dashboard() {
               <CardTitle className="text-lg">Fluxo Mensal de Entradas e Saídas</CardTitle>
               <p className="text-xs text-muted-foreground mt-1">Comparativo mês a mês (12 meses)</p>
             </div>
-            <div className="flex items-center gap-3 text-xs">
+            <div className="flex items-center gap-3 text-xs flex-wrap justify-end">
               <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-accent" />ENTRADAS</span>
+              <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-info" />CERT. DIGITAL</span>
               <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-muted-foreground/40" />SAÍDAS</span>
             </div>
           </CardHeader>
@@ -231,9 +313,17 @@ export default function Dashboard() {
                   tickFormatter={(v) => `R$ ${(v/1000).toFixed(1)}k`} />
                 <Tooltip
                   contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
-                  formatter={(v: number) => brl(v)}
+                  formatter={(v: number, name: string) => {
+                    const labels: Record<string, string> = {
+                      entradasBase: "Entradas",
+                      certificados: "Cert. Digital",
+                      saidas: "Saídas",
+                    };
+                    return [brl(v), labels[name] ?? name];
+                  }}
                 />
-                <Bar dataKey="entradas" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="entradasBase" stackId="in" fill="hsl(var(--accent))" radius={[0, 0, 0, 0]} />
+                <Bar dataKey="certificados" stackId="in" fill="hsl(var(--info))" radius={[4, 4, 0, 0]} />
                 <Bar dataKey="saidas" fill="hsl(var(--muted-foreground) / 0.3)" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -244,19 +334,33 @@ export default function Dashboard() {
           <CardHeader className="pb-3"><CardTitle className="text-lg">Calendário de Recebimentos</CardTitle></CardHeader>
           <CardContent className="space-y-2 max-h-80 overflow-y-auto">
             {receiptCalendar.length === 0 && <p className="text-sm text-muted-foreground py-8 text-center">Sem recebimentos previstos.</p>}
-            {receiptCalendar.map((r, i) => (
-              <div key={i} className="flex items-center gap-3 p-2 rounded-lg hover:bg-secondary/50">
-                <div className="h-12 w-12 rounded-lg bg-primary-soft flex flex-col items-center justify-center shrink-0">
-                  <span className="text-[9px] uppercase text-primary/70 leading-none">Dia</span>
-                  <span className="text-sm font-bold text-primary leading-tight">{r.day}</span>
+            {receiptCalendar.map((r, i) => {
+              const isCert = r.type === "Certificado Digital";
+              return (
+                <div key={i} className={cn("flex items-center gap-3 p-2 rounded-lg hover:bg-secondary/50", isCert && "bg-info-soft/40")}>
+                  <div className={cn("h-12 w-12 rounded-lg flex flex-col items-center justify-center shrink-0", isCert ? "bg-info-soft" : "bg-primary-soft")}>
+                    <span className={cn("text-[9px] uppercase leading-none", isCert ? "text-info/70" : "text-primary/70")}>Dia</span>
+                    <span className={cn("text-sm font-bold leading-tight", isCert ? "text-info" : "text-primary")}>{r.day}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-sm truncate flex items-center gap-1.5">
+                      {isCert && <ShieldCheck className="h-3.5 w-3.5 text-info shrink-0" />}
+                      {r.client}
+                    </div>
+                    <div className="text-[10px] uppercase text-muted-foreground tracking-wider">{r.type}</div>
+                  </div>
+                  <div className="font-semibold text-sm tabular-nums">{brlCompact(r.value)}</div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium text-sm truncate">{r.client}</div>
-                  <div className="text-[10px] uppercase text-muted-foreground tracking-wider">{r.type}</div>
-                </div>
-                <div className="font-semibold text-sm tabular-nums">{brlCompact(r.value)}</div>
+              );
+            })}
+            {certData.monthValue === 0 && certData.nextUpcoming && (
+              <div className="mt-3 p-2 rounded-lg border border-dashed border-info/40 bg-info-soft/30 text-xs text-muted-foreground flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4 text-info shrink-0" />
+                <span>
+                  Próximo Cert. Digital: <strong className="text-foreground">{certData.nextUpcoming.date.toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}</strong> — {brl(certData.nextUpcoming.value)}
+                </span>
               </div>
-            ))}
+            )}
           </CardContent>
         </Card>
       </div>
