@@ -12,6 +12,15 @@ import { Button } from "@/components/ui/button";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from "recharts";
 import { cn } from "@/lib/utils";
 
+// Parse 'YYYY-MM-DD' como data LOCAL (evita shift de fuso que joga dia 01 para o mês anterior)
+function parseLocalDate(s: string | null | undefined): Date | null {
+  if (!s) return null;
+  const iso = String(s).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]));
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? null : d;
+}
+
 export default function Dashboard() {
   const [services, setServices] = useState<any[]>([]);
   const [contracts, setContracts] = useState<any[]>([]);
@@ -94,8 +103,8 @@ export default function Dashboard() {
       });
       // Histórico/registros pontuais com value e sem recorrência: contam só no mês de início
       services.filter(s => (s.category === "Certificado Digital" || !Number(s.recurrence_value)) && Number(s.value) > 0 && s.recurrence_start_date).forEach(s => {
-        const d = new Date(s.recurrence_start_date);
-        if (d.getFullYear() === year && d.getMonth() === month) total += Number(s.value);
+        const d = parseLocalDate(s.recurrence_start_date);
+        if (d && d.getFullYear() === year && d.getMonth() === month) total += Number(s.value);
       });
       // Pagamentos de implementação recebidos no mês
       implPayments.forEach(p => {
@@ -112,8 +121,8 @@ export default function Dashboard() {
       const certificados = services
         .filter(s => s.category === "Certificado Digital" && s.recurrence_start_date)
         .filter(s => {
-          const d = new Date(s.recurrence_start_date);
-          return d.getFullYear() === m.year && d.getMonth() === m.month;
+          const d = parseLocalDate(s.recurrence_start_date);
+          return d && d.getFullYear() === m.year && d.getMonth() === m.month;
         })
         .reduce((a, s) => a + Number(s.value || 0), 0);
       const entradasBase = entradasTotal - certificados;
@@ -135,7 +144,7 @@ export default function Dashboard() {
     const all = services
       .filter(s => s.category === "Certificado Digital" && s.recurrence_start_date)
       .map(s => ({
-        date: new Date(s.recurrence_start_date),
+        date: parseLocalDate(s.recurrence_start_date) as Date,
         value: Number(s.value || 0),
         qty: Number(s.recurrence_value || 0),
       }))
@@ -181,8 +190,8 @@ export default function Dashboard() {
     services
       .filter(s => s.category === "Certificado Digital" && s.recurrence_start_date && Number(s.value) > 0)
       .forEach(s => {
-        const d = new Date(s.recurrence_start_date);
-        if (d.getFullYear() === monthRef.getFullYear() && d.getMonth() === monthRef.getMonth()) {
+        const d = parseLocalDate(s.recurrence_start_date);
+        if (d && d.getFullYear() === monthRef.getFullYear() && d.getMonth() === monthRef.getMonth()) {
           const qty = Number(s.recurrence_value ?? 0);
           list.push({
             client: `${s.client}${qty ? ` (${qty} cert.)` : ""}`,
