@@ -6,8 +6,9 @@ import { PageHeader } from "@/components/PageHeader";
 import { brl, brlCompact, sameMonth, daysInMonth, monthLabel } from "@/lib/format";
 import {
   TrendingUp, ArrowUpRight, CreditCard, Users, Calendar as CalIcon,
-  Receipt as ReceiptIcon, Target, Wallet,
+  Receipt as ReceiptIcon, Target, Wallet, ShieldCheck,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from "recharts";
 import { cn } from "@/lib/utils";
 
