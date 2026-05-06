@@ -310,7 +310,7 @@ export default function Dashboard() {
       {/* Linha 3: Fluxo de Caixa + Calendário de Recebimentos */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <Card className="lg:col-span-2">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <CardHeader className="flex flex-row items-center justify-between pb-2 gap-4 flex-wrap">
             <div>
               <CardTitle className="text-lg">Fluxo Mensal de Entradas e Saídas</CardTitle>
               <p className="text-xs text-muted-foreground mt-1">Comparativo mês a mês (12 meses)</p>
@@ -321,7 +321,12 @@ export default function Dashboard() {
               <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-muted-foreground/40" />SAÍDAS</span>
             </div>
           </CardHeader>
-          <CardContent className="h-80">
+          <div className="px-6 pb-3 grid grid-cols-3 gap-2">
+            <TotalPill label="Entradas do mês" value={monthTotals.entradas} tone="success" />
+            <TotalPill label="Saídas do mês" value={monthTotals.saidas} tone="warning" />
+            <TotalPill label="Saldo do mês" value={monthTotals.saldo} tone={monthTotals.saldo >= 0 ? "success" : "danger"} />
+          </div>
+          <CardContent className="h-72">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={cashflowData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
@@ -432,5 +437,19 @@ function IconKpi({ icon: Icon, tone, label, value, hint }: any) {
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+function TotalPill({ label, value, tone }: { label: string; value: number; tone: "success" | "warning" | "danger" }) {
+  const toneClass = {
+    success: "bg-success-soft text-success border-success/20",
+    warning: "bg-warning-soft text-warning border-warning/20",
+    danger: "bg-destructive/10 text-destructive border-destructive/20",
+  }[tone];
+  return (
+    <div className={cn("rounded-lg border px-3 py-2", toneClass)}>
+      <div className="text-[9px] font-semibold tracking-[0.15em] uppercase opacity-80">{label}</div>
+      <div className="text-base font-bold tabular-nums mt-0.5">{brl(value)}</div>
+    </div>
   );
 }
