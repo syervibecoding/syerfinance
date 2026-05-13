@@ -12,7 +12,7 @@ import { brl } from "@/lib/format";
 import { toast } from "@/hooks/use-toast";
 import { Pencil, Trash2, Building2 } from "lucide-react";
 
-const empty = { name: "", role: "", equity: 0, payment_day: "", payment_value: 0 };
+const empty = { name: "", role: "", equity: 0, payment_day: "", payment_value: 0, next_payment_value: "", next_value_start: "" };
 
 export default function Portfolio() {
   const { user } = useAuth();
@@ -33,6 +33,8 @@ export default function Portfolio() {
   const save = async () => {
     if (!user) return;
     const payload: any = { ...form, user_id: user.id, equity: Number(form.equity), payment_value: Number(form.payment_value) };
+    payload.next_payment_value = form.next_payment_value === "" || form.next_payment_value == null ? null : Number(form.next_payment_value);
+    payload.next_value_start = form.next_value_start || null;
     const res = editing
       ? await supabase.from("companies").update(payload).eq("id", editing.id)
       : await supabase.from("companies").insert(payload);
@@ -89,6 +91,14 @@ export default function Portfolio() {
             <F label="Equity (%)"><Input type="number" step="0.01" value={form.equity} onChange={e => set("equity", e.target.value)} /></F>
             <F label="Dia de pagamento"><Input value={form.payment_day} onChange={e => set("payment_day", e.target.value)} placeholder="ex: 5" /></F>
             <div className="col-span-2"><F label="Valor mensal (pró-labore)"><Input type="number" step="0.01" value={form.payment_value} onChange={e => set("payment_value", e.target.value)} /></F></div>
+            <div className="col-span-2 border-t pt-3 mt-1">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Reajuste futuro (opcional)</p>
+              <div className="grid grid-cols-2 gap-4">
+                <F label="Novo valor mensal"><Input type="number" step="0.01" value={form.next_payment_value} onChange={e => set("next_payment_value", e.target.value)} placeholder="ex: 5500" /></F>
+                <F label="A partir de"><Input type="date" value={form.next_value_start} onChange={e => set("next_value_start", e.target.value)} /></F>
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-1.5">O passado fica intacto. A partir do mês informado, o novo valor entra no fluxo.</p>
+            </div>
           </div>
           <DialogFooter><Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button><Button onClick={save}>Salvar</Button></DialogFooter>
         </DialogContent>
