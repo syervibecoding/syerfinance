@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend, Line, ComposedChart } from "recharts";
 import { cn } from "@/lib/utils";
-import { activeValue } from "@/lib/pricing";
+import { activeValue, isPeriodDue, monthlyEquivalent } from "@/lib/pricing";
 
 // Parse 'YYYY-MM-DD' como data LOCAL (evita shift de fuso que joga dia 01 para o mês anterior)
 function parseLocalDate(s: string | null | undefined): Date | null {
