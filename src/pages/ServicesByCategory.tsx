@@ -26,6 +26,7 @@ const baseEmpty = {
   deadline: "", category: "Marketing",
   implementation_charged: 0,
   recurrence_value: 0, recurrence_period: "Mensal", recurrence_start_date: "",
+  next_recurrence_value: "", next_value_start: "",
   payment_day: null as number | null, traffic_reload_day: null as number | null,
   discount_percentage: 0, discount_type: "",
   has_contract: false, contract_end_date: "",
@@ -98,7 +99,8 @@ export default function ServicesByCategory({ category, title }: Props) {
     }
     ["value","implementation_charged","recurrence_value","discount_percentage","last_recharge_value","daily_spend","traffic_balance"].forEach(k => payload[k] = Number(payload[k] ?? 0));
     ["payment_day","traffic_reload_day","payment_day_2"].forEach(k => payload[k] = payload[k] ? Number(payload[k]) : null);
-    ["recurrence_start_date","contract_end_date","last_recharge_date"].forEach(k => { if (!payload[k]) payload[k] = null; });
+    ["recurrence_start_date","contract_end_date","last_recharge_date","next_value_start"].forEach(k => { if (!payload[k]) payload[k] = null; });
+    payload.next_recurrence_value = form.next_recurrence_value === "" || form.next_recurrence_value == null ? null : Number(form.next_recurrence_value);
     if (!payload.recurrence_period) payload.recurrence_period = null;
     delete payload.implementation_paid;
 
@@ -282,6 +284,17 @@ export default function ServicesByCategory({ category, title }: Props) {
                       <Input type="number" min={1} max={31} value={form.payment_day_2 ?? ""} onChange={e => set("payment_day_2", e.target.value)} placeholder="ex: 20" />
                     </Field>
                   )}
+                </div>
+                <div className="border-t mt-4 pt-3">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Reajuste futuro (opcional)</p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <Field label="Novo valor da recorrência" helper="O passado fica intacto.">
+                      <Input type="number" step="0.01" value={form.next_recurrence_value} onChange={e => set("next_recurrence_value", e.target.value)} placeholder="ex: 1500" />
+                    </Field>
+                    <Field label="A partir de" helper="Mês em que o novo valor passa a valer.">
+                      <Input type="date" value={form.next_value_start} onChange={e => set("next_value_start", e.target.value)} />
+                    </Field>
+                  </div>
                 </div>
               </Section>
             )}
