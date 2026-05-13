@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { PageHeader } from "@/components/PageHeader";
 import { brl } from "@/lib/format";
-import { activeValue, monthKey, parseLocalDate } from "@/lib/pricing";
+import { activeValue, monthKey, parseLocalDate, isPeriodDue } from "@/lib/pricing";
 import { toast } from "@/hooks/use-toast";
 import { CheckCircle2, Circle, AlertTriangle, XCircle, RotateCcw, DollarSign } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -78,10 +78,11 @@ export default function Recebimentos() {
     services.filter(s => s.category !== "Certificado Digital" && Number(s.recurrence_value) > 0).forEach(s => {
       const start = parseLocalDate(s.recurrence_start_date);
       if (start && start > monthEnd) return;
+      if (!isPeriodDue(s.recurrence_period, s.recurrence_start_date, monthRef)) return;
       const val = activeValue(s.recurrence_value, s.next_recurrence_value, s.next_value_start, monthRef);
       list.push({
         source_type: "service", source_id: s.id, client: s.client,
-        origin: `${s.category} · ${s.service_name}`, expected_value: val, due_day: s.payment_day,
+        origin: `${s.category} · ${s.service_name}${s.recurrence_period === "Anual" ? " (anual)" : ""}`, expected_value: val, due_day: s.payment_day,
       });
     });
 
