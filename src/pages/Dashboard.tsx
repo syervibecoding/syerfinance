@@ -99,15 +99,20 @@ export default function Dashboard() {
       const override = HISTORICAL_ENTRIES[`${year}-${month}`];
       if (override !== undefined) return override;
 
+      const refMonth = new Date(year, month, 1);
       const monthEnd = new Date(year, month + 1, 0);
       let total = 0;
       services.filter(s => s.category !== "Certificado Digital" && Number(s.recurrence_value) > 0).forEach(s => {
         const start = s.recurrence_start_date ? new Date(s.recurrence_start_date) : null;
-        if (!start || start <= monthEnd) total += Number(s.recurrence_value);
+        if (!start || start <= monthEnd) total += activeValue(s.recurrence_value, s.next_recurrence_value, s.next_value_start, refMonth);
       });
       contracts.filter(c => c.status === "Ativo").forEach(c => {
         const start = c.recurrence_start_date ? new Date(c.recurrence_start_date) : null;
-        if (!start || start <= monthEnd) total += Number(c.monthly_value);
+        if (!start || start <= monthEnd) total += activeValue(c.monthly_value, c.next_monthly_value, c.next_value_start, refMonth);
+      });
+      // Sociedades — entram em todo mês também
+      companies.forEach(co => {
+        total += activeValue(co.payment_value, co.next_payment_value, co.next_value_start, refMonth);
       });
       // Histórico/registros pontuais com value e sem recorrência: contam só no mês de início
       services.filter(s => (s.category === "Certificado Digital" || !Number(s.recurrence_value)) && Number(s.value) > 0 && s.recurrence_start_date).forEach(s => {
@@ -122,8 +127,24 @@ export default function Dashboard() {
       return total;
     };
 
+    // Realizado = soma do received_value dos payment_records do mês + impl pagos no mês
+    const realizadoEntries = (year: number, month: number) => {
+      const override = HISTORICAL_ENTRIES[`${year}-${month}`];
+      if (override !== undefined) return override;
+      const monthStr = `${year}-${String(month + 1).padStart(2, "0")}-01`;
+      let total = paymentRecords
+        .filter(r => r.reference_month === monthStr)
+        .reduce((a, r) => a + Number(r.received_value || 0), 0);
+      implPayments.forEach(p => {
+        const d = new Date(p.paid_date);
+        if (d.getFullYear() === year && d.getMonth() === month) total += Number(p.value);
+      });
+      return total;
+    };
+
     return months.map(m => {
       const entradasTotal = recurringEntries(m.year, m.month);
+      const realizado = realizadoEntries(m.year, m.month);
       const hasOverride = HISTORICAL_ENTRIES[`${m.year}-${m.month}`] !== undefined;
       const certificados = hasOverride ? 0 : services
         .filter(s => s.category === "Certificado Digital" && s.recurrence_start_date)
@@ -141,10 +162,11 @@ export default function Dashboard() {
         entradasBase: Math.round(entradasBase * 100) / 100,
         certificados: Math.round(certificados * 100) / 100,
         entradas: Math.round(entradasTotal * 100) / 100,
+        realizado: Math.round(realizado * 100) / 100,
         saidas: Math.round(saidas * 100) / 100,
       };
     });
-  }, [monthRef, expenses, services, contracts, implPayments]);
+  }, [monthRef, expenses, services, contracts, companies, implPayments, paymentRecords]);
 
   // Métricas e histórico de Certificado Digital
   const certData = useMemo(() => {
