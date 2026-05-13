@@ -139,14 +139,11 @@ export default function Recebimentos() {
       const rec = recordIndex.get(`${e.source_type}:${e.source_id}`);
       let status: Status = (rec?.status as Status) ?? "pending";
       if (!rec) {
-        // overdue se passou do dia de vencimento neste mês
-        if (e.due_day &&
-          monthRef.getFullYear() < today.getFullYear() ||
-          (monthRef.getFullYear() === today.getFullYear() && monthRef.getMonth() < today.getMonth()) ||
-          (monthRef.getFullYear() === today.getFullYear() && monthRef.getMonth() === today.getMonth() && e.due_day && today.getDate() > e.due_day)
-        ) {
-          status = "overdue";
-        }
+        const refKeyN = monthRef.getFullYear() * 12 + monthRef.getMonth();
+        const todayKeyN = today.getFullYear() * 12 + today.getMonth();
+        const isPastMonth = refKeyN < todayKeyN;
+        const isCurrentOverdue = refKeyN === todayKeyN && e.due_day != null && today.getDate() > Number(e.due_day);
+        if (isPastMonth || isCurrentOverdue) status = "overdue";
       }
       const received = Number(rec?.received_value ?? 0);
       return { ...e, status, received_value: received, paid_date: rec?.paid_date ?? null, notes: rec?.notes ?? "", record_id: rec?.id ?? null };
