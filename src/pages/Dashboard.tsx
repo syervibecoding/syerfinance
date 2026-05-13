@@ -472,7 +472,7 @@ function IconKpi({ icon: Icon, tone, label, value, hint }: any) {
   );
 }
 
-function TotalPill({ label, value, tone }: { label: string; value: number; tone: "success" | "warning" | "danger" }) {
+function TotalPill({ label, value, tone }: { label: string; value: number; tone: "success" | "warning" | "danger" | "info" }) {
   const toneClass = {
     success: "bg-success-soft text-success border-success/20",
     warning: "bg-warning-soft text-warning border-warning/20",
