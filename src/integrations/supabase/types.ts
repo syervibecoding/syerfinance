@@ -20,6 +20,8 @@ export type Database = {
           equity: number
           id: string
           name: string
+          next_payment_value: number | null
+          next_value_start: string | null
           payment_day: string | null
           payment_value: number | null
           role: string
@@ -31,6 +33,8 @@ export type Database = {
           equity?: number
           id?: string
           name: string
+          next_payment_value?: number | null
+          next_value_start?: string | null
           payment_day?: string | null
           payment_value?: number | null
           role: string
@@ -42,6 +46,8 @@ export type Database = {
           equity?: number
           id?: string
           name?: string
+          next_payment_value?: number | null
+          next_value_start?: string | null
           payment_day?: string | null
           payment_value?: number | null
           role?: string
@@ -179,6 +185,8 @@ export type Database = {
           id: string
           last_check: string | null
           monthly_value: number
+          next_monthly_value: number | null
+          next_value_start: string | null
           payment_day: number | null
           recurrence_start_date: string | null
           status: string
@@ -192,6 +200,8 @@ export type Database = {
           id?: string
           last_check?: string | null
           monthly_value?: number
+          next_monthly_value?: number | null
+          next_value_start?: string | null
           payment_day?: number | null
           recurrence_start_date?: string | null
           status: string
@@ -205,11 +215,61 @@ export type Database = {
           id?: string
           last_check?: string | null
           monthly_value?: number
+          next_monthly_value?: number | null
+          next_value_start?: string | null
           payment_day?: number | null
           recurrence_start_date?: string | null
           status?: string
           updated_at?: string
           url?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      payment_records: {
+        Row: {
+          client: string
+          created_at: string
+          expected_value: number
+          id: string
+          notes: string | null
+          paid_date: string | null
+          received_value: number
+          reference_month: string
+          source_id: string
+          source_type: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          client: string
+          created_at?: string
+          expected_value?: number
+          id?: string
+          notes?: string | null
+          paid_date?: string | null
+          received_value?: number
+          reference_month: string
+          source_id: string
+          source_type: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          client?: string
+          created_at?: string
+          expected_value?: number
+          id?: string
+          notes?: string | null
+          paid_date?: string | null
+          received_value?: number
+          reference_month?: string
+          source_id?: string
+          source_type?: string
+          status?: string
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
@@ -230,6 +290,8 @@ export type Database = {
           implementation_paid: number | null
           last_recharge_date: string | null
           last_recharge_value: number | null
+          next_recurrence_value: number | null
+          next_value_start: string | null
           payment_day: number | null
           payment_day_2: number | null
           recurrence_period: string | null
@@ -259,6 +321,8 @@ export type Database = {
           implementation_paid?: number | null
           last_recharge_date?: string | null
           last_recharge_value?: number | null
+          next_recurrence_value?: number | null
+          next_value_start?: string | null
           payment_day?: number | null
           payment_day_2?: number | null
           recurrence_period?: string | null
@@ -288,6 +352,8 @@ export type Database = {
           implementation_paid?: number | null
           last_recharge_date?: string | null
           last_recharge_value?: number | null
+          next_recurrence_value?: number | null
+          next_value_start?: string | null
           payment_day?: number | null
           payment_day_2?: number | null
           recurrence_period?: string | null

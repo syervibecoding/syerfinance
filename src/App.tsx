@@ -14,6 +14,7 @@ import TrafficCalendar from "./pages/TrafficCalendar";
 import Tasks from "./pages/Tasks";
 import Expenses from "./pages/Expenses";
 import Portfolio from "./pages/Portfolio";
+import Recebimentos from "./pages/Recebimentos";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -39,6 +40,7 @@ const App = () => (
               <Route path="/portfolio" element={<Portfolio />} />
               <Route path="/atividades" element={<Tasks />} />
               <Route path="/despesas" element={<Expenses />} />
+              <Route path="/recebimentos" element={<Recebimentos />} />
               <Route path="/servicos" element={<Navigate to="/marketing" replace />} />
             </Route>
             <Route path="*" element={<NotFound />} />

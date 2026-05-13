@@ -9,8 +9,9 @@ import {
   Receipt as ReceiptIcon, Target, Wallet, ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend, Line, ComposedChart } from "recharts";
 import { cn } from "@/lib/utils";
+import { activeValue } from "@/lib/pricing";
 
 // Parse 'YYYY-MM-DD' como data LOCAL (evita shift de fuso que joga dia 01 para o mês anterior)
 function parseLocalDate(s: string | null | undefined): Date | null {
@@ -27,22 +28,25 @@ export default function Dashboard() {
   const [expenses, setExpenses] = useState<any[]>([]);
   const [companies, setCompanies] = useState<any[]>([]);
   const [implPayments, setImplPayments] = useState<any[]>([]);
+  const [paymentRecords, setPaymentRecords] = useState<any[]>([]);
   const [monthRef, setMonthRef] = useState(new Date());
 
   useEffect(() => {
     (async () => {
-      const [s, c, e, co, ip] = await Promise.all([
+      const [s, c, e, co, ip, pr] = await Promise.all([
         supabase.from("services").select("*"),
         supabase.from("maintenance_contracts").select("*"),
         supabase.from("expenses").select("*"),
         supabase.from("companies").select("*"),
         supabase.from("implementation_payments").select("*"),
+        supabase.from("payment_records").select("*"),
       ]);
       setServices(s.data ?? []);
       setContracts(c.data ?? []);
       setExpenses(e.data ?? []);
       setCompanies(co.data ?? []);
       setImplPayments(ip.data ?? []);
+      setPaymentRecords(pr.data ?? []);
     })();
   }, []);
 
@@ -95,15 +99,20 @@ export default function Dashboard() {
       const override = HISTORICAL_ENTRIES[`${year}-${month}`];
       if (override !== undefined) return override;
 
+      const refMonth = new Date(year, month, 1);
       const monthEnd = new Date(year, month + 1, 0);
       let total = 0;
       services.filter(s => s.category !== "Certificado Digital" && Number(s.recurrence_value) > 0).forEach(s => {
         const start = s.recurrence_start_date ? new Date(s.recurrence_start_date) : null;
-        if (!start || start <= monthEnd) total += Number(s.recurrence_value);
+        if (!start || start <= monthEnd) total += activeValue(s.recurrence_value, s.next_recurrence_value, s.next_value_start, refMonth);
       });
       contracts.filter(c => c.status === "Ativo").forEach(c => {
         const start = c.recurrence_start_date ? new Date(c.recurrence_start_date) : null;
-        if (!start || start <= monthEnd) total += Number(c.monthly_value);
+        if (!start || start <= monthEnd) total += activeValue(c.monthly_value, c.next_monthly_value, c.next_value_start, refMonth);
+      });
+      // Sociedades — entram em todo mês também
+      companies.forEach(co => {
+        total += activeValue(co.payment_value, co.next_payment_value, co.next_value_start, refMonth);
       });
       // Histórico/registros pontuais com value e sem recorrência: contam só no mês de início
       services.filter(s => (s.category === "Certificado Digital" || !Number(s.recurrence_value)) && Number(s.value) > 0 && s.recurrence_start_date).forEach(s => {
@@ -118,8 +127,24 @@ export default function Dashboard() {
       return total;
     };
 
+    // Realizado = soma do received_value dos payment_records do mês + impl pagos no mês
+    const realizadoEntries = (year: number, month: number) => {
+      const override = HISTORICAL_ENTRIES[`${year}-${month}`];
+      if (override !== undefined) return override;
+      const monthStr = `${year}-${String(month + 1).padStart(2, "0")}-01`;
+      let total = paymentRecords
+        .filter(r => r.reference_month === monthStr)
+        .reduce((a, r) => a + Number(r.received_value || 0), 0);
+      implPayments.forEach(p => {
+        const d = new Date(p.paid_date);
+        if (d.getFullYear() === year && d.getMonth() === month) total += Number(p.value);
+      });
+      return total;
+    };
+
     return months.map(m => {
       const entradasTotal = recurringEntries(m.year, m.month);
+      const realizado = realizadoEntries(m.year, m.month);
       const hasOverride = HISTORICAL_ENTRIES[`${m.year}-${m.month}`] !== undefined;
       const certificados = hasOverride ? 0 : services
         .filter(s => s.category === "Certificado Digital" && s.recurrence_start_date)
@@ -137,10 +162,11 @@ export default function Dashboard() {
         entradasBase: Math.round(entradasBase * 100) / 100,
         certificados: Math.round(certificados * 100) / 100,
         entradas: Math.round(entradasTotal * 100) / 100,
+        realizado: Math.round(realizado * 100) / 100,
         saidas: Math.round(saidas * 100) / 100,
       };
     });
-  }, [monthRef, expenses, services, contracts, implPayments]);
+  }, [monthRef, expenses, services, contracts, companies, implPayments, paymentRecords]);
 
   // Métricas e histórico de Certificado Digital
   const certData = useMemo(() => {
@@ -170,13 +196,15 @@ export default function Dashboard() {
     return { all, monthValue, monthQty, nextUpcoming };
   }, [services, monthRef]);
 
-  // Totais do mês selecionado (entradas, saídas, saldo)
+  // Totais do mês selecionado (previsto, recebido, em aberto, saídas, saldo)
   const monthTotals = useMemo(() => {
     const label = monthRef.toLocaleDateString("pt-BR", { month: "short" }).replace(".", "") + "/" + String(monthRef.getFullYear()).slice(-2);
     const cur = cashflowData.find(c => c.month === label);
-    const entradas = cur?.entradas ?? 0;
+    const previsto = cur?.entradas ?? 0;
+    const recebido = cur?.realizado ?? 0;
+    const aberto = Math.max(previsto - recebido, 0);
     const saidas = cur?.saidas ?? 0;
-    return { entradas, saidas, saldo: entradas - saidas };
+    return { previsto, recebido, aberto, saidas, saldo: recebido - saidas };
   }, [cashflowData, monthRef]);
 
   // Receipt calendar — recorrências do mês ordenadas por dia
@@ -319,19 +347,20 @@ export default function Dashboard() {
               <p className="text-xs text-muted-foreground mt-1">Comparativo mês a mês (12 meses)</p>
             </div>
             <div className="flex items-center gap-3 text-xs flex-wrap justify-end">
-              <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-accent" />ENTRADAS</span>
-              <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-info" />CERT. DIGITAL</span>
+              <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-accent/40 border border-accent" />PREVISTO</span>
+              <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-success" />REALIZADO</span>
               <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-muted-foreground/40" />SAÍDAS</span>
             </div>
           </CardHeader>
-          <div className="px-6 pb-3 grid grid-cols-3 gap-2">
-            <TotalPill label="Entradas do mês" value={monthTotals.entradas} tone="success" />
-            <TotalPill label="Saídas do mês" value={monthTotals.saidas} tone="warning" />
-            <TotalPill label="Saldo do mês" value={monthTotals.saldo} tone={monthTotals.saldo >= 0 ? "success" : "danger"} />
+          <div className="px-6 pb-3 grid grid-cols-2 md:grid-cols-4 gap-2">
+            <TotalPill label="Previsto" value={monthTotals.previsto} tone="info" />
+            <TotalPill label="Recebido" value={monthTotals.recebido} tone="success" />
+            <TotalPill label="Em aberto" value={monthTotals.aberto} tone={monthTotals.aberto > 0 ? "warning" : "success"} />
+            <TotalPill label="Saldo" value={monthTotals.saldo} tone={monthTotals.saldo >= 0 ? "success" : "danger"} />
           </div>
           <CardContent className="h-72">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={cashflowData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+              <ComposedChart data={cashflowData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                 <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} />
 
@@ -341,17 +370,17 @@ export default function Dashboard() {
                   contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
                   formatter={(v: number, name: string) => {
                     const labels: Record<string, string> = {
-                      entradasBase: "Entradas",
-                      certificados: "Cert. Digital",
+                      entradas: "Previsto",
+                      realizado: "Realizado",
                       saidas: "Saídas",
                     };
                     return [brl(v), labels[name] ?? name];
                   }}
                 />
-                <Bar dataKey="entradasBase" stackId="in" fill="hsl(var(--accent))" radius={[0, 0, 0, 0]} />
-                <Bar dataKey="certificados" stackId="in" fill="hsl(var(--info))" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="entradas" fill="hsl(var(--accent) / 0.35)" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="realizado" fill="hsl(var(--success))" radius={[4, 4, 0, 0]} />
                 <Bar dataKey="saidas" fill="hsl(var(--muted-foreground) / 0.3)" radius={[4, 4, 0, 0]} />
-              </BarChart>
+              </ComposedChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
@@ -443,11 +472,12 @@ function IconKpi({ icon: Icon, tone, label, value, hint }: any) {
   );
 }
 
-function TotalPill({ label, value, tone }: { label: string; value: number; tone: "success" | "warning" | "danger" }) {
+function TotalPill({ label, value, tone }: { label: string; value: number; tone: "success" | "warning" | "danger" | "info" }) {
   const toneClass = {
     success: "bg-success-soft text-success border-success/20",
     warning: "bg-warning-soft text-warning border-warning/20",
     danger: "bg-destructive/10 text-destructive border-destructive/20",
+    info: "bg-info-soft text-info border-info/20",
   }[tone];
   return (
     <div className={cn("rounded-lg border px-3 py-2", toneClass)}>

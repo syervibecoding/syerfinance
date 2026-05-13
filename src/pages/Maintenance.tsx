@@ -14,7 +14,7 @@ import { brl } from "@/lib/format";
 import { toast } from "@/hooks/use-toast";
 import { Pencil, Trash2, ExternalLink } from "lucide-react";
 
-const empty = { client: "", url: "", monthly_value: 0, status: "Ativo", last_check: "", recurrence_start_date: "", payment_day: null as any };
+const empty = { client: "", url: "", monthly_value: 0, status: "Ativo", last_check: "", recurrence_start_date: "", payment_day: null as any, next_monthly_value: "", next_value_start: "" };
 
 export default function Maintenance() {
   const { user } = useAuth();
@@ -35,6 +35,8 @@ export default function Maintenance() {
   const save = async () => {
     if (!user) return;
     const payload: any = { ...form, user_id: user.id, monthly_value: Number(form.monthly_value), payment_day: form.payment_day ? Number(form.payment_day) : null };
+    payload.next_monthly_value = form.next_monthly_value === "" || form.next_monthly_value == null ? null : Number(form.next_monthly_value);
+    payload.next_value_start = form.next_value_start || null;
     if (!payload.recurrence_start_date) payload.recurrence_start_date = null;
     const res = editing
       ? await supabase.from("maintenance_contracts").update(payload).eq("id", editing.id)
@@ -101,6 +103,14 @@ export default function Maintenance() {
             <F label="Último check"><Input value={form.last_check} onChange={e => set("last_check", e.target.value)} placeholder="Hoje, 09:00" /></F>
             <F label="Dia de pagamento"><Input type="number" min={1} max={31} value={form.payment_day ?? ""} onChange={e => set("payment_day", e.target.value)} /></F>
             <F label="Início recorrência"><Input type="date" value={form.recurrence_start_date} onChange={e => set("recurrence_start_date", e.target.value)} /></F>
+            <div className="col-span-2 border-t pt-3 mt-1">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Reajuste futuro (opcional)</p>
+              <div className="grid grid-cols-2 gap-4">
+                <F label="Novo valor mensal"><Input type="number" step="0.01" value={form.next_monthly_value} onChange={e => set("next_monthly_value", e.target.value)} placeholder="ex: 850" /></F>
+                <F label="A partir de"><Input type="date" value={form.next_value_start} onChange={e => set("next_value_start", e.target.value)} /></F>
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-1.5">O passado fica intacto. A partir do mês informado, o novo valor entra no fluxo.</p>
+            </div>
           </div>
           <DialogFooter><Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button><Button onClick={save}>Salvar</Button></DialogFooter>
         </DialogContent>
