@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import {
   LayoutDashboard, Megaphone, Wrench, Globe, Calendar, Building2,
   KanbanSquare, Receipt, Settings, LifeBuoy, LogOut, Layers, ShieldCheck,
-  ChevronLeft, ChevronRight, ChevronDown,
+  ChevronLeft, ChevronRight, ChevronDown, Wallet,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -39,6 +39,7 @@ const navGroups: NavGroup[] = [
   {
     label: "Financeiro",
     items: [
+      { to: "/recebimentos", label: "Recebimentos", icon: Wallet },
       { to: "/portfolio", label: "Empresas & Sociedades", icon: Building2 },
       { to: "/despesas", label: "Despesas & Custos", icon: Receipt },
     ],
