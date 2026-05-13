@@ -196,13 +196,15 @@ export default function Dashboard() {
     return { all, monthValue, monthQty, nextUpcoming };
   }, [services, monthRef]);
 
-  // Totais do mês selecionado (entradas, saídas, saldo)
+  // Totais do mês selecionado (previsto, recebido, em aberto, saídas, saldo)
   const monthTotals = useMemo(() => {
     const label = monthRef.toLocaleDateString("pt-BR", { month: "short" }).replace(".", "") + "/" + String(monthRef.getFullYear()).slice(-2);
     const cur = cashflowData.find(c => c.month === label);
-    const entradas = cur?.entradas ?? 0;
+    const previsto = cur?.entradas ?? 0;
+    const recebido = cur?.realizado ?? 0;
+    const aberto = Math.max(previsto - recebido, 0);
     const saidas = cur?.saidas ?? 0;
-    return { entradas, saidas, saldo: entradas - saidas };
+    return { previsto, recebido, aberto, saidas, saldo: recebido - saidas };
   }, [cashflowData, monthRef]);
 
   // Receipt calendar — recorrências do mês ordenadas por dia
