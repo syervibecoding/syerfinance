@@ -9,8 +9,9 @@ import {
   Receipt as ReceiptIcon, Target, Wallet, ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend, Line, ComposedChart } from "recharts";
 import { cn } from "@/lib/utils";
+import { activeValue } from "@/lib/pricing";
 
 // Parse 'YYYY-MM-DD' como data LOCAL (evita shift de fuso que joga dia 01 para o mês anterior)
 function parseLocalDate(s: string | null | undefined): Date | null {
@@ -27,22 +28,25 @@ export default function Dashboard() {
   const [expenses, setExpenses] = useState<any[]>([]);
   const [companies, setCompanies] = useState<any[]>([]);
   const [implPayments, setImplPayments] = useState<any[]>([]);
+  const [paymentRecords, setPaymentRecords] = useState<any[]>([]);
   const [monthRef, setMonthRef] = useState(new Date());
 
   useEffect(() => {
     (async () => {
-      const [s, c, e, co, ip] = await Promise.all([
+      const [s, c, e, co, ip, pr] = await Promise.all([
         supabase.from("services").select("*"),
         supabase.from("maintenance_contracts").select("*"),
         supabase.from("expenses").select("*"),
         supabase.from("companies").select("*"),
         supabase.from("implementation_payments").select("*"),
+        supabase.from("payment_records").select("*"),
       ]);
       setServices(s.data ?? []);
       setContracts(c.data ?? []);
       setExpenses(e.data ?? []);
       setCompanies(co.data ?? []);
       setImplPayments(ip.data ?? []);
+      setPaymentRecords(pr.data ?? []);
     })();
   }, []);
 
