@@ -29,3 +29,23 @@ export function activeValue(
 export function monthKey(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
 }
+
+/** Para recorrência "Anual", só vence no mês de aniversário do start. Mensal vence sempre. */
+export function isPeriodDue(
+  period: string | null | undefined,
+  startISO: string | null | undefined,
+  refMonth: Date,
+): boolean {
+  if (period !== "Anual") return true;
+  const start = parseLocalDate(startISO);
+  if (!start) return false;
+  if (refMonth.getFullYear() < start.getFullYear()) return false;
+  if (refMonth.getFullYear() === start.getFullYear() && refMonth.getMonth() < start.getMonth()) return false;
+  return refMonth.getMonth() === start.getMonth();
+}
+
+/** Equivalente mensal para MRR (anual = valor / 12). */
+export function monthlyEquivalent(value: number | string | null | undefined, period: string | null | undefined): number {
+  const v = Number(value ?? 0);
+  return period === "Anual" ? v / 12 : v;
+}
