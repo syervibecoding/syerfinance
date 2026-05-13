@@ -477,6 +477,7 @@ function TotalPill({ label, value, tone }: { label: string; value: number; tone:
     success: "bg-success-soft text-success border-success/20",
     warning: "bg-warning-soft text-warning border-warning/20",
     danger: "bg-destructive/10 text-destructive border-destructive/20",
+    info: "bg-info-soft text-info border-info/20",
   }[tone];
   return (
     <div className={cn("rounded-lg border px-3 py-2", toneClass)}>
