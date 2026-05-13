@@ -347,19 +347,20 @@ export default function Dashboard() {
               <p className="text-xs text-muted-foreground mt-1">Comparativo mês a mês (12 meses)</p>
             </div>
             <div className="flex items-center gap-3 text-xs flex-wrap justify-end">
-              <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-accent" />ENTRADAS</span>
-              <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-info" />CERT. DIGITAL</span>
+              <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-accent/40 border border-accent" />PREVISTO</span>
+              <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-success" />REALIZADO</span>
               <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-muted-foreground/40" />SAÍDAS</span>
             </div>
           </CardHeader>
-          <div className="px-6 pb-3 grid grid-cols-3 gap-2">
-            <TotalPill label="Entradas do mês" value={monthTotals.entradas} tone="success" />
-            <TotalPill label="Saídas do mês" value={monthTotals.saidas} tone="warning" />
-            <TotalPill label="Saldo do mês" value={monthTotals.saldo} tone={monthTotals.saldo >= 0 ? "success" : "danger"} />
+          <div className="px-6 pb-3 grid grid-cols-2 md:grid-cols-4 gap-2">
+            <TotalPill label="Previsto" value={monthTotals.previsto} tone="info" />
+            <TotalPill label="Recebido" value={monthTotals.recebido} tone="success" />
+            <TotalPill label="Em aberto" value={monthTotals.aberto} tone={monthTotals.aberto > 0 ? "warning" : "success"} />
+            <TotalPill label="Saldo" value={monthTotals.saldo} tone={monthTotals.saldo >= 0 ? "success" : "danger"} />
           </div>
           <CardContent className="h-72">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={cashflowData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+              <ComposedChart data={cashflowData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                 <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} />
 
@@ -369,17 +370,17 @@ export default function Dashboard() {
                   contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
                   formatter={(v: number, name: string) => {
                     const labels: Record<string, string> = {
-                      entradasBase: "Entradas",
-                      certificados: "Cert. Digital",
+                      entradas: "Previsto",
+                      realizado: "Realizado",
                       saidas: "Saídas",
                     };
                     return [brl(v), labels[name] ?? name];
                   }}
                 />
-                <Bar dataKey="entradasBase" stackId="in" fill="hsl(var(--accent))" radius={[0, 0, 0, 0]} />
-                <Bar dataKey="certificados" stackId="in" fill="hsl(var(--info))" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="entradas" fill="hsl(var(--accent) / 0.35)" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="realizado" fill="hsl(var(--success))" radius={[4, 4, 0, 0]} />
                 <Bar dataKey="saidas" fill="hsl(var(--muted-foreground) / 0.3)" radius={[4, 4, 0, 0]} />
-              </BarChart>
+              </ComposedChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
