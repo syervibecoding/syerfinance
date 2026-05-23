@@ -1,35 +1,34 @@
-## Ajustes na plataforma
+## Contrato com duração em meses + corte da recorrência
 
-### 1. Remover "+ Novo Job" do Dashboard
-- Em `src/pages/Dashboard.tsx` (linha 257), remover a prop `onAdd`/`addLabel` do `PageHeader` para o botão sumir. Cada aba já tem seu próprio "Novo serviço".
+### Problema
+O campo "Fim do contrato" hoje só guarda a data, mas Dashboard e Recebimentos ignoram esse limite — a recorrência aparece infinitamente. Além disso digitar "3 meses a partir de julho" é desconfortável.
 
-### 2. Implementação condicional (Projetos & Plataformas + Sites)
-- Em `src/pages/ServicesByCategory.tsx`, a Seção 3 ("Implementação") hoje aparece para todas categorias exceto Cert. Digital.
-- Mudar a condição para `category === "Plataformas" || category === "Sites"`.
-- Marketing perde os campos `implementation_charged`, `discount_percentage`, `discount_type` e o componente `ImplementationPayments`.
+### Mudanças
 
-### 3. Recarga de tráfego com lista/histórico dentro de Marketing
-- Hoje só existem 4 campos soltos (última recarga, data, gasto diário, saldo) na Seção "Tráfego de Anúncios" e a página `/trafego` mostra a previsão.
-- Plano: criar tabela nova `traffic_recharges` (id, user_id, service_id, value, recharge_date, notes, timestamps + RLS por user_id).
-- No formulário do serviço Marketing, substituir o input único "Última recarga" por um mini-histórico:
-  - Lista das últimas recargas do serviço (data + valor + nota), ordenado desc.
-  - Botão "+ Nova recarga" abre uma linha inline (valor + data + nota) que insere em `traffic_recharges` e atualiza `last_recharge_value`/`last_recharge_date` no service.
-- Na tela `/marketing` (lista de serviços), adicionar abaixo da tabela uma seção "Histórico de recargas" agregando todas as recargas dos serviços de marketing (cliente, serviço, data, valor), com filtro por cliente.
-- O cálculo do `TrafficCalendar` continua usando `last_recharge_*` no service — sem mudança comportamental.
+**1. Formulário (`src/pages/ServicesByCategory.tsx` — Seção Contrato)**
 
-### 4. Banner de alerta de cobrança anual no Dashboard
-- No `Dashboard.tsx`, calcular `anuaisDoMes`: serviços com `recurrence_period === "Anual"` cujo mês de `recurrence_start_date` == mês corrente exibido.
-- Renderizar um banner (`Card` com tom warning, ícone Bell) no topo do Dashboard quando `anuaisDoMes.length > 0`:
-  - Texto: "Cobrança anual neste mês: MRX (R$ 120) — vence dia X". Lista cada cliente com valor e dia de pagamento.
-- O banner respeita o mês selecionado (`monthRef`). MRR continua somando 120/12 = 10 (já implementado no commit anterior).
+Quando "Tem contrato?" estiver ligado, mostrar dois campos lado a lado:
+- **Duração (meses)** — input numérico. Ao mudar, calcula automaticamente `contract_end_date = recurrence_start_date + N meses - 1 dia` (último dia do enésimo mês).
+- **Fim do contrato** — input date editável (preenchido pelo cálculo, mas o usuário pode sobrescrever).
 
-### Arquivos afetados
-- `src/pages/Dashboard.tsx` — remover botão + adicionar banner anual
-- `src/pages/ServicesByCategory.tsx` — condição da Implementação + UI de recargas
-- `src/pages/TrafficCalendar.tsx` — sem mudanças funcionais (continua lendo do service)
-- `src/components/TrafficRecharges.tsx` (novo) — mini-histórico dentro do form e seção agregada na lista Marketing
-- `supabase/migrations/...` — nova tabela `traffic_recharges` + RLS
+Se o usuário mudar o `recurrence_start_date` ou a duração, recalcula a data fim.
 
-### Detalhe técnico
-- A nova tabela só armazena o histórico — o cálculo do calendário de tráfego continua usando os campos `last_recharge_*` do service (atualizados ao inserir uma nova recarga), evitando refazer a lógica de previsão.
-- O banner anual usa `isPeriodDue` já existente em `src/lib/pricing.ts`.
+Helper: duração calculada a partir de start/end quando carrega um serviço existente (diff em meses).
+
+**2. Corte da recorrência no fluxo**
+
+Em `src/pages/Dashboard.tsx` (`recurringEntries`, `receiptCalendar`) e `src/pages/Recebimentos.tsx`:
+- Para serviços com `has_contract = true` e `contract_end_date` preenchido, só incluir a recorrência se `refMonth <= contract_end_date` (comparando por mês/ano, não por dia exato).
+- Serviços sem contrato continuam ilimitados como hoje.
+
+### Exemplo Locaweb
+- has_contract = true, recurrence_start_date = 01/07/2026, duração = 3 → contract_end_date = 30/09/2026.
+- Fluxo previsto: jul/ago/set 2026 mostram a recorrência; out/2026 em diante ficam zerados.
+
+### Arquivos
+- `src/pages/ServicesByCategory.tsx` — UI da seção Contrato + cálculo.
+- `src/lib/pricing.ts` — helper `isContractActive(service, refMonth)` reaproveitado nas três telas.
+- `src/pages/Dashboard.tsx` — aplicar `isContractActive` nos loops de serviços recorrentes.
+- `src/pages/Recebimentos.tsx` — mesmo filtro ao gerar as linhas previstas.
+
+Sem migration — usa `contract_end_date` que já existe.
