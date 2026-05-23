@@ -15,6 +15,7 @@ import { PageHeader, EmptyState } from "@/components/PageHeader";
 import { ImplementationPayments } from "@/components/ImplementationPayments";
 import { TrafficRecharges } from "@/components/TrafficRecharges";
 import { brl } from "@/lib/format";
+import { computeContractEnd, monthsBetween } from "@/lib/pricing";
 import { toast } from "@/hooks/use-toast";
 import { Pencil, Trash2, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
