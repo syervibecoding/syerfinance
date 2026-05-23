@@ -351,17 +351,32 @@ export default function ServicesByCategory({ category, title }: Props) {
 
             {/* SEÇÃO 4: Contrato */}
             {!isCert && (
-              <Section title="Contrato">
-                <div className="grid grid-cols-2 gap-4">
+              <Section title="Contrato" hint="Quando ativo, a recorrência para automaticamente no fluxo após o fim do contrato.">
+                <div className="grid grid-cols-3 gap-4">
                   <Field label="Tem contrato?">
                     <div className="flex items-center h-10">
                       <Switch checked={form.has_contract} onCheckedChange={v => set("has_contract", v)} />
                     </div>
                   </Field>
                   {form.has_contract && (
-                    <Field label="Fim do contrato">
-                      <Input type="date" value={form.contract_end_date} onChange={e => set("contract_end_date", e.target.value)} />
-                    </Field>
+                    <>
+                      <Field label="Duração (meses)" helper="Calcula a data fim a partir do início da recorrência.">
+                        <Input
+                          type="number"
+                          min={1}
+                          value={monthsBetween(form.recurrence_start_date, form.contract_end_date) || ""}
+                          onChange={e => {
+                            const m = Number(e.target.value);
+                            const end = computeContractEnd(form.recurrence_start_date, m);
+                            set("contract_end_date", end ?? "");
+                          }}
+                          placeholder="ex: 3"
+                        />
+                      </Field>
+                      <Field label="Fim do contrato" helper="Editável; sobrescreve o cálculo.">
+                        <Input type="date" value={form.contract_end_date} onChange={e => set("contract_end_date", e.target.value)} />
+                      </Field>
+                    </>
                   )}
                 </div>
               </Section>
