@@ -80,12 +80,18 @@ export default function Recebimentos() {
     services.filter(s => s.category !== "Certificado Digital" && Number(s.recurrence_value) > 0).forEach(s => {
       const start = parseLocalDate(s.recurrence_start_date);
       if (start && start > monthEnd) return;
-      if (!isPeriodDue(s.recurrence_period, s.recurrence_start_date, monthRef)) return;
       if (!isContractActive(s, monthRef)) return;
+      const due = isPeriodDue(s.recurrence_period, s.recurrence_start_date, monthRef);
+      const isAnnual = s.recurrence_period === "Anual";
+      // Anual fora do mês de aniversário: mostra como informativo (não devida)
+      if (!due && !isAnnual) return;
       const val = activeValue(s.recurrence_value, s.next_recurrence_value, s.next_value_start, monthRef);
       list.push({
         source_type: "service", source_id: s.id, client: s.client,
-        origin: `${s.category} · ${s.service_name}${s.recurrence_period === "Anual" ? " (anual)" : ""}`, expected_value: val, due_day: s.payment_day,
+        origin: `${s.category} · ${s.service_name}${isAnnual ? " (anual)" : ""}`,
+        expected_value: val, due_day: s.payment_day,
+        annual_not_due: isAnnual && !due,
+        annual_due_month: isAnnual && start ? start.getMonth() : null,
       });
     });
 
