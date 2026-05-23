@@ -219,6 +219,7 @@ export default function Dashboard() {
     const list: { client: string; day: number; value: number; type: string }[] = [];
     services.filter(s => s.category !== "Certificado Digital" && Number(s.recurrence_value) > 0).forEach(s => {
       if (!isPeriodDue(s.recurrence_period, s.recurrence_start_date, monthRef)) return;
+      if (!isContractActive(s, monthRef)) return;
       const val = Number(s.recurrence_value);
       const suffix = s.recurrence_period === "Anual" ? " (anual)" : "";
       if (s.split_payment && s.payment_day_2) {
