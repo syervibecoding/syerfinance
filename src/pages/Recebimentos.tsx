@@ -169,13 +169,14 @@ export default function Recebimentos() {
   }, [rows, filter, search]);
 
   const totals = useMemo(() => {
-    const previsto = rows.reduce((a, r) => a + r.expected_value, 0)
+    const billable = rows.filter(r => !r.annual_not_due);
+    const previsto = billable.reduce((a, r) => a + r.expected_value, 0)
       + implInMonth.reduce((a, p) => a + Number(p.value), 0);
-    const recebido = rows.reduce((a, r) => a + r.received_value, 0)
+    const recebido = billable.reduce((a, r) => a + r.received_value, 0)
       + implInMonth.reduce((a, p) => a + Number(p.value), 0);
-    const aberto = rows.filter(r => r.status !== "paid" && r.status !== "unpaid")
+    const aberto = billable.filter(r => r.status !== "paid" && r.status !== "unpaid")
       .reduce((a, r) => a + (r.expected_value - r.received_value), 0);
-    const inadimplente = rows.filter(r => r.status === "unpaid")
+    const inadimplente = billable.filter(r => r.status === "unpaid")
       .reduce((a, r) => a + r.expected_value, 0);
     return { previsto, recebido, aberto, inadimplente };
   }, [rows, implInMonth]);
