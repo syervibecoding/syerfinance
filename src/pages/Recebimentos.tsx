@@ -26,6 +26,8 @@ interface ExpectedRow {
   origin: string;
   expected_value: number;
   due_day?: number | null;
+  annual_not_due?: boolean;
+  annual_due_month?: number | null; // 0-11
 }
 
 const STATUS_LABEL: Record<Status, string> = {
@@ -78,12 +80,18 @@ export default function Recebimentos() {
     services.filter(s => s.category !== "Certificado Digital" && Number(s.recurrence_value) > 0).forEach(s => {
       const start = parseLocalDate(s.recurrence_start_date);
       if (start && start > monthEnd) return;
-      if (!isPeriodDue(s.recurrence_period, s.recurrence_start_date, monthRef)) return;
       if (!isContractActive(s, monthRef)) return;
+      const due = isPeriodDue(s.recurrence_period, s.recurrence_start_date, monthRef);
+      const isAnnual = s.recurrence_period === "Anual";
+      // Anual fora do mês de aniversário: mostra como informativo (não devida)
+      if (!due && !isAnnual) return;
       const val = activeValue(s.recurrence_value, s.next_recurrence_value, s.next_value_start, monthRef);
       list.push({
         source_type: "service", source_id: s.id, client: s.client,
-        origin: `${s.category} · ${s.service_name}${s.recurrence_period === "Anual" ? " (anual)" : ""}`, expected_value: val, due_day: s.payment_day,
+        origin: `${s.category} · ${s.service_name}${isAnnual ? " (anual)" : ""}`,
+        expected_value: val, due_day: s.payment_day,
+        annual_not_due: isAnnual && !due,
+        annual_due_month: isAnnual && start ? start.getMonth() : null,
       });
     });
 
@@ -140,7 +148,7 @@ export default function Recebimentos() {
     return expected.map(e => {
       const rec = recordIndex.get(`${e.source_type}:${e.source_id}`);
       let status: Status = (rec?.status as Status) ?? "pending";
-      if (!rec) {
+      if (!rec && !e.annual_not_due) {
         const refKeyN = monthRef.getFullYear() * 12 + monthRef.getMonth();
         const todayKeyN = today.getFullYear() * 12 + today.getMonth();
         const isPastMonth = refKeyN < todayKeyN;
@@ -161,13 +169,14 @@ export default function Recebimentos() {
   }, [rows, filter, search]);
 
   const totals = useMemo(() => {
-    const previsto = rows.reduce((a, r) => a + r.expected_value, 0)
+    const billable = rows.filter(r => !r.annual_not_due);
+    const previsto = billable.reduce((a, r) => a + r.expected_value, 0)
       + implInMonth.reduce((a, p) => a + Number(p.value), 0);
-    const recebido = rows.reduce((a, r) => a + r.received_value, 0)
+    const recebido = billable.reduce((a, r) => a + r.received_value, 0)
       + implInMonth.reduce((a, p) => a + Number(p.value), 0);
-    const aberto = rows.filter(r => r.status !== "paid" && r.status !== "unpaid")
+    const aberto = billable.filter(r => r.status !== "paid" && r.status !== "unpaid")
       .reduce((a, r) => a + (r.expected_value - r.received_value), 0);
-    const inadimplente = rows.filter(r => r.status === "unpaid")
+    const inadimplente = billable.filter(r => r.status === "unpaid")
       .reduce((a, r) => a + r.expected_value, 0);
     return { previsto, recebido, aberto, inadimplente };
   }, [rows, implInMonth]);
@@ -281,35 +290,48 @@ export default function Recebimentos() {
               <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-10">Nenhuma cobrança neste filtro.</TableCell></TableRow>
             )}
             {filtered.map((r, i) => (
-              <TableRow key={`${r.source_type}-${r.source_id}-${i}`}>
+              <TableRow key={`${r.source_type}-${r.source_id}-${i}`} className={cn(r.annual_not_due && "bg-muted/30 text-muted-foreground")}>
                 <TableCell className="font-medium">{r.client}</TableCell>
                 <TableCell className="text-muted-foreground text-sm">{r.origin}</TableCell>
-                <TableCell className="text-center">{r.due_day ?? "-"}</TableCell>
-                <TableCell className="text-right tabular-nums">{brl(r.expected_value)}</TableCell>
+                <TableCell className="text-center">{r.annual_not_due ? "—" : (r.due_day ?? "-")}</TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {r.annual_not_due ? <span className="line-through opacity-60">{brl(r.expected_value)}</span> : brl(r.expected_value)}
+                </TableCell>
                 <TableCell className={cn("text-right tabular-nums", r.received_value > 0 && "text-success font-medium")}>
                   {r.received_value > 0 ? brl(r.received_value) : "—"}
                 </TableCell>
                 <TableCell>
-                  <Badge variant="outline" className={cn("border", STATUS_TONE[r.status])}>{STATUS_LABEL[r.status]}</Badge>
+                  {r.annual_not_due ? (
+                    <Badge variant="outline" className="border border-warning/30 bg-warning-soft text-warning gap-1">
+                      <AlertTriangle className="h-3 w-3" />
+                      Anual — vence em {new Date(monthRef.getFullYear(), r.annual_due_month ?? 0, 1).toLocaleDateString("pt-BR", { month: "short" }).replace(".", "")}
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className={cn("border", STATUS_TONE[r.status])}>{STATUS_LABEL[r.status]}</Badge>
+                  )}
                 </TableCell>
                 <TableCell className="text-muted-foreground text-sm">{r.paid_date ? new Date(r.paid_date).toLocaleDateString("pt-BR") : "—"}</TableCell>
                 <TableCell className="text-right">
-                  <div className="flex justify-end gap-1">
-                    <Button size="sm" variant="ghost" title="Marcar como pago" onClick={() => markPaid(r)}>
-                      <CheckCircle2 className="h-4 w-4 text-success" />
-                    </Button>
-                    <Button size="sm" variant="ghost" title="Pagamento parcial" onClick={() => openPartial(r)}>
-                      <DollarSign className="h-4 w-4 text-info" />
-                    </Button>
-                    <Button size="sm" variant="ghost" title="Marcar como não pago" onClick={() => markUnpaid(r)}>
-                      <XCircle className="h-4 w-4 text-destructive" />
-                    </Button>
-                    {r.record_id && (
-                      <Button size="sm" variant="ghost" title="Desfazer" onClick={() => reset(r)}>
-                        <RotateCcw className="h-4 w-4 text-muted-foreground" />
+                  {r.annual_not_due ? (
+                    <span className="text-xs italic text-muted-foreground">não devida neste mês</span>
+                  ) : (
+                    <div className="flex justify-end gap-1">
+                      <Button size="sm" variant="ghost" title="Marcar como pago" onClick={() => markPaid(r)}>
+                        <CheckCircle2 className="h-4 w-4 text-success" />
                       </Button>
-                    )}
-                  </div>
+                      <Button size="sm" variant="ghost" title="Pagamento parcial" onClick={() => openPartial(r)}>
+                        <DollarSign className="h-4 w-4 text-info" />
+                      </Button>
+                      <Button size="sm" variant="ghost" title="Marcar como não pago" onClick={() => markUnpaid(r)}>
+                        <XCircle className="h-4 w-4 text-destructive" />
+                      </Button>
+                      {r.record_id && (
+                        <Button size="sm" variant="ghost" title="Desfazer" onClick={() => reset(r)}>
+                          <RotateCcw className="h-4 w-4 text-muted-foreground" />
+                        </Button>
+                      )}
+                    </div>
+                  )}
                 </TableCell>
               </TableRow>
             ))}
