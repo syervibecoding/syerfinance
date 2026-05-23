@@ -110,6 +110,7 @@ export default function Dashboard() {
         const start = s.recurrence_start_date ? new Date(s.recurrence_start_date) : null;
         if (start && start > monthEnd) return;
         if (!isPeriodDue(s.recurrence_period, s.recurrence_start_date, refMonth)) return;
+        if (!isContractActive(s, refMonth)) return;
         total += activeValue(s.recurrence_value, s.next_recurrence_value, s.next_value_start, refMonth);
       });
       contracts.filter(c => c.status === "Ativo").forEach(c => {
