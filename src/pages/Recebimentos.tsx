@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { PageHeader } from "@/components/PageHeader";
 import { brl } from "@/lib/format";
-import { activeValue, monthKey, parseLocalDate, isPeriodDue } from "@/lib/pricing";
+import { activeValue, monthKey, parseLocalDate, isPeriodDue, isContractActive } from "@/lib/pricing";
 import { toast } from "@/hooks/use-toast";
 import { CheckCircle2, Circle, AlertTriangle, XCircle, RotateCcw, DollarSign } from "lucide-react";
 import { cn } from "@/lib/utils";
