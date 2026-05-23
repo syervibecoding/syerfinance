@@ -254,8 +254,39 @@ export default function Dashboard() {
         title="Dashboard Executivo"
         subtitle="Visão 360º de LTV, MRR e Fluxo de Caixa"
         monthRef={monthRef} onMonthChange={setMonthRef}
-        onAdd={() => {}} addLabel="+ Novo Job"
       />
+
+      {/* Banner: cobranças anuais do mês */}
+      {(() => {
+        const anuais = services.filter(s =>
+          s.recurrence_period === "Anual" &&
+          Number(s.recurrence_value) > 0 &&
+          isPeriodDue("Anual", s.recurrence_start_date, monthRef)
+        );
+        if (!anuais.length) return null;
+        const total = anuais.reduce((a, s) => a + Number(s.recurrence_value), 0);
+        return (
+          <Card className="border-warning/40 bg-warning-soft">
+            <CardContent className="py-4 flex items-start gap-3">
+              <div className="rounded-md bg-warning/20 p-2 text-warning"><ReceiptIcon className="h-5 w-5" /></div>
+              <div className="flex-1">
+                <div className="text-sm font-semibold text-foreground">
+                  Cobrança anual neste mês — {brl(total)}
+                </div>
+                <div className="text-xs text-muted-foreground mt-1 space-y-0.5">
+                  {anuais.map(s => (
+                    <div key={s.id}>
+                      <span className="font-medium text-foreground">{s.client}</span> · {s.service_name} — {brl(Number(s.recurrence_value))}
+                      {s.payment_day ? ` · vence dia ${s.payment_day}` : ""}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })()}
+
 
       {/* Linha 1: KPIs principais */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

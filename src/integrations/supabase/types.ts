@@ -415,6 +415,39 @@ export type Database = {
         }
         Relationships: []
       }
+      traffic_recharges: {
+        Row: {
+          created_at: string
+          id: string
+          notes: string | null
+          recharge_date: string
+          service_id: string
+          updated_at: string
+          user_id: string
+          value: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          recharge_date?: string
+          service_id: string
+          updated_at?: string
+          user_id: string
+          value?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          recharge_date?: string
+          service_id?: string
+          updated_at?: string
+          user_id?: string
+          value?: number
+        }
+        Relationships: []
+      }
       useful_links: {
         Row: {
           created_at: string
