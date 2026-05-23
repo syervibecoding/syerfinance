@@ -79,9 +79,14 @@ export function ImplementationPayments({ serviceId, charged, discountPercentage,
       <div className="flex items-center justify-between">
         <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Pagamentos da implementação</div>
         <div className="text-xs text-muted-foreground tabular-nums">
-          {brl(total)} / {brl(charged)} · Saldo {brl(remaining)}
+          {brl(total)} / {brl(effectiveCharged)} · Saldo {brl(remaining)}
         </div>
       </div>
+      {discPct > 0 && (
+        <div className="text-[11px] text-muted-foreground">
+          Cobrado {brl(charged)} · {discPct}% desconto{discountType ? ` (${discountType})` : ""} → {brl(effectiveCharged)}
+        </div>
+      )}
       <Progress value={pct} className="h-1.5" />
 
       {!serviceId && (
