@@ -344,6 +344,8 @@ export default function ServicesByCategory({ category, title }: Props) {
                   <ImplementationPayments
                     serviceId={editing?.id ?? null}
                     charged={Number(form.implementation_charged ?? 0)}
+                    discountPercentage={form.discount_percentage}
+                    discountType={form.discount_type}
                   />
                 </div>
               </Section>

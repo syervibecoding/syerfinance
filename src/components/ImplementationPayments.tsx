@@ -18,10 +18,12 @@ interface Payment {
 interface Props {
   serviceId: string | null;
   charged: number;
+  discountPercentage?: number | string | null;
+  discountType?: string | null;
   onTotalChange?: (total: number) => void;
 }
 
-export function ImplementationPayments({ serviceId, charged, onTotalChange }: Props) {
+export function ImplementationPayments({ serviceId, charged, discountPercentage, discountType, onTotalChange }: Props) {
   const { user } = useAuth();
   const [payments, setPayments] = useState<Payment[]>([]);
   const [adding, setAdding] = useState(false);
@@ -40,8 +42,11 @@ export function ImplementationPayments({ serviceId, charged, onTotalChange }: Pr
   useEffect(() => { load(); }, [serviceId]);
 
   const total = payments.reduce((a, p) => a + Number(p.value), 0);
-  const pct = charged > 0 ? Math.min(100, (total / charged) * 100) : 0;
-  const remaining = Math.max(0, charged - total);
+  const discPct = Math.max(0, Math.min(100, Number(discountPercentage ?? 0)));
+  const effectiveCharged = discPct > 0 ? charged * (1 - discPct / 100) : charged;
+  const pct = effectiveCharged > 0 ? Math.min(100, (total / effectiveCharged) * 100) : 0;
+  const remaining = Math.max(0, effectiveCharged - total);
+
 
   useEffect(() => { onTotalChange?.(total); }, [total]);
 
@@ -74,9 +79,14 @@ export function ImplementationPayments({ serviceId, charged, onTotalChange }: Pr
       <div className="flex items-center justify-between">
         <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Pagamentos da implementação</div>
         <div className="text-xs text-muted-foreground tabular-nums">
-          {brl(total)} / {brl(charged)} · Saldo {brl(remaining)}
+          {brl(total)} / {brl(effectiveCharged)} · Saldo {brl(remaining)}
         </div>
       </div>
+      {discPct > 0 && (
+        <div className="text-[11px] text-muted-foreground">
+          Cobrado {brl(charged)} · {discPct}% desconto{discountType ? ` (${discountType})` : ""} → {brl(effectiveCharged)}
+        </div>
+      )}
       <Progress value={pct} className="h-1.5" />
 
       {!serviceId && (

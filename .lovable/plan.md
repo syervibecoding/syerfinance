@@ -1,34 +1,34 @@
-## Contrato com duração em meses + corte da recorrência
+## Problema
 
-### Problema
-O campo "Fim do contrato" hoje só guarda a data, mas Dashboard e Recebimentos ignoram esse limite — a recorrência aparece infinitamente. Além disso digitar "3 meses a partir de julho" é desconfortável.
+No formulário de serviço, o bloco "Pagamentos da implementação" mostra:
+- `R$ 1.800,00 / R$ 2.000,00 · Saldo R$ 200,00`
+- barra de progresso em ~90%
 
-### Mudanças
+Mesmo com 10% de desconto no Pix (valor efetivo R$ 1.800) e pagamento de R$ 1.800, o componente ignora o desconto e considera que ainda faltam R$ 200. Isso é inconsistente com a correção já aplicada no Dashboard (que passou a aplicar o desconto na "Dívida de Implementação").
 
-**1. Formulário (`src/pages/ServicesByCategory.tsx` — Seção Contrato)**
+## Correção
 
-Quando "Tem contrato?" estiver ligado, mostrar dois campos lado a lado:
-- **Duração (meses)** — input numérico. Ao mudar, calcula automaticamente `contract_end_date = recurrence_start_date + N meses - 1 dia` (último dia do enésimo mês).
-- **Fim do contrato** — input date editável (preenchido pelo cálculo, mas o usuário pode sobrescrever).
+Tornar o componente `ImplementationPayments` ciente do desconto:
 
-Se o usuário mudar o `recurrence_start_date` ou a duração, recalcula a data fim.
+1. **`src/components/ImplementationPayments.tsx`**
+   - Adicionar nas props: `discountPercentage?: number | string | null` e `discountType?: string | null` (ex: "Pix", "à vista").
+   - Calcular `effectiveCharged = charged * (1 - pct/100)` quando houver `%` > 0.
+   - Usar `effectiveCharged` no lugar de `charged` para:
+     - `pct` (progresso)
+     - `remaining` (saldo)
+     - label `{brl(total)} / {brl(effectiveCharged)} · Saldo {brl(remaining)}`
+   - Se houver desconto, mostrar uma linha discreta abaixo: `Valor cobrado R$ 2.000,00 · Desconto 10% (Pix) → R$ 1.800,00`.
+   - Manter `charged` original apenas como referência visual; não alterar nada no banco.
 
-Helper: duração calculada a partir de start/end quando carrega um serviço existente (diff em meses).
+2. **`src/pages/ServicesByCategory.tsx`** (onde o componente é usado dentro do dialog do serviço)
+   - Passar `discountPercentage` e `discountType` do estado do formulário para o `<ImplementationPayments />`.
 
-**2. Corte da recorrência no fluxo**
+Nenhuma alteração de schema ou de lógica do Dashboard — apenas alinhar o widget com a regra de desconto já adotada no resto do app.
 
-Em `src/pages/Dashboard.tsx` (`recurringEntries`, `receiptCalendar`) e `src/pages/Recebimentos.tsx`:
-- Para serviços com `has_contract = true` e `contract_end_date` preenchido, só incluir a recorrência se `refMonth <= contract_end_date` (comparando por mês/ano, não por dia exato).
-- Serviços sem contrato continuam ilimitados como hoje.
+## Resultado esperado
 
-### Exemplo Locaweb
-- has_contract = true, recurrence_start_date = 01/07/2026, duração = 3 → contract_end_date = 30/09/2026.
-- Fluxo previsto: jul/ago/set 2026 mostram a recorrência; out/2026 em diante ficam zerados.
-
-### Arquivos
-- `src/pages/ServicesByCategory.tsx` — UI da seção Contrato + cálculo.
-- `src/lib/pricing.ts` — helper `isContractActive(service, refMonth)` reaproveitado nas três telas.
-- `src/pages/Dashboard.tsx` — aplicar `isContractActive` nos loops de serviços recorrentes.
-- `src/pages/Recebimentos.tsx` — mesmo filtro ao gerar as linhas previstas.
-
-Sem migration — usa `contract_end_date` que já existe.
+No exemplo do print (cobrado 2000, 10% Pix, pago 1800):
+- Progresso: 100%
+- Saldo: R$ 0,00
+- Label: `R$ 1.800,00 / R$ 1.800,00 · Saldo R$ 0,00`
+- Linha auxiliar: `Cobrado R$ 2.000,00 · 10% Pix → R$ 1.800,00`
