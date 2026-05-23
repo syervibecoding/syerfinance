@@ -1,48 +1,35 @@
-## Ajuste: recorrência Anual
+## Ajustes na plataforma
 
-Hoje o sistema trata todo `recurrence_value` como mensal, então MRX (R$ 120/ano) está aparecendo como R$ 120 todo mês no fluxo previsto. Precisa respeitar `recurrence_period = "Anual"`.
+### 1. Remover "+ Novo Job" do Dashboard
+- Em `src/pages/Dashboard.tsx` (linha 257), remover a prop `onAdd`/`addLabel` do `PageHeader` para o botão sumir. Cada aba já tem seu próprio "Novo serviço".
 
-### Regra
+### 2. Implementação condicional (Projetos & Plataformas + Sites)
+- Em `src/pages/ServicesByCategory.tsx`, a Seção 3 ("Implementação") hoje aparece para todas categorias exceto Cert. Digital.
+- Mudar a condição para `category === "Plataformas" || category === "Sites"`.
+- Marketing perde os campos `implementation_charged`, `discount_percentage`, `discount_type` e o componente `ImplementationPayments`.
 
-- **Anual**: cobrança única no mês de aniversário do `recurrence_start_date`. Ex.: início 04/2026 → cobra em 04/2026, depois 04/2027, 04/2028…
-- **Mensal**: como já é hoje (todo mês a partir do início).
+### 3. Recarga de tráfego com lista/histórico dentro de Marketing
+- Hoje só existem 4 campos soltos (última recarga, data, gasto diário, saldo) na Seção "Tráfego de Anúncios" e a página `/trafego` mostra a previsão.
+- Plano: criar tabela nova `traffic_recharges` (id, user_id, service_id, value, recharge_date, notes, timestamps + RLS por user_id).
+- No formulário do serviço Marketing, substituir o input único "Última recarga" por um mini-histórico:
+  - Lista das últimas recargas do serviço (data + valor + nota), ordenado desc.
+  - Botão "+ Nova recarga" abre uma linha inline (valor + data + nota) que insere em `traffic_recharges` e atualiza `last_recharge_value`/`last_recharge_date` no service.
+- Na tela `/marketing` (lista de serviços), adicionar abaixo da tabela uma seção "Histórico de recargas" agregando todas as recargas dos serviços de marketing (cliente, serviço, data, valor), com filtro por cliente.
+- O cálculo do `TrafficCalendar` continua usando `last_recharge_*` no service — sem mudança comportamental.
 
-### Onde alterar
+### 4. Banner de alerta de cobrança anual no Dashboard
+- No `Dashboard.tsx`, calcular `anuaisDoMes`: serviços com `recurrence_period === "Anual"` cujo mês de `recurrence_start_date` == mês corrente exibido.
+- Renderizar um banner (`Card` com tom warning, ícone Bell) no topo do Dashboard quando `anuaisDoMes.length > 0`:
+  - Texto: "Cobrança anual neste mês: MRX (R$ 120) — vence dia X". Lista cada cliente com valor e dia de pagamento.
+- O banner respeita o mês selecionado (`monthRef`). MRR continua somando 120/12 = 10 (já implementado no commit anterior).
 
-1. **`src/pages/Recebimentos.tsx`** (geração das linhas previstas)
-   - Para serviços com `recurrence_period === "Anual"`: incluir no mês apenas se `month === startMonth` e `year >= startYear`.
-   - Senão (Mensal/null): comportamento atual.
-
-2. **`src/pages/Dashboard.tsx`**
-   - `recurringEntries(year, month)`: mesma regra para anuais — só soma quando bate o mês de aniversário.
-   - `receiptCalendar`: incluir no calendário do mês só se for o mês de aniversário (quando anual).
-   - **MRR (`mrrGross`/`mrrNet`)**: para anuais, somar `recurrence_value / 12` (equivalente mensal), para refletir o ticket recorrente médio sem inflar.
-   - `dailyAverage` e `ticket`: passam a usar a versão prorateada via MRR ajustado.
-
-3. **`src/pages/Portfolio.tsx`** (lista de serviços)
-   - Continua mostrando `R$ 120/ano` quando `recurrence_period === "Anual"` (já está ok).
+### Arquivos afetados
+- `src/pages/Dashboard.tsx` — remover botão + adicionar banner anual
+- `src/pages/ServicesByCategory.tsx` — condição da Implementação + UI de recargas
+- `src/pages/TrafficCalendar.tsx` — sem mudanças funcionais (continua lendo do service)
+- `src/components/TrafficRecharges.tsx` (novo) — mini-histórico dentro do form e seção agregada na lista Marketing
+- `supabase/migrations/...` — nova tabela `traffic_recharges` + RLS
 
 ### Detalhe técnico
-
-Criar helper em `src/lib/pricing.ts`:
-
-```ts
-export function isAnnualDue(period: string|null|undefined, startISO: string|null|undefined, refMonth: Date): boolean {
-  if (period !== "Anual") return true; // mensal: sempre vence
-  const start = parseLocalDate(startISO);
-  if (!start) return false;
-  return refMonth.getMonth() === start.getMonth() && refMonth.getFullYear() >= start.getFullYear();
-}
-export function monthlyEquivalent(value: number, period: string|null|undefined): number {
-  return period === "Anual" ? value / 12 : value;
-}
-```
-
-Aplicar `isAnnualDue` nos loops de Recebimentos e Dashboard antes de somar/criar a linha. Aplicar `monthlyEquivalent` no cálculo de MRR.
-
-### Resultado esperado para MRX
-
-- Abril/2026: previsto R$ 120 (anual, vence agora) — já recebido R$ 120 ✅
-- Mai–Mar/2027: R$ 0 de MRX no previsto/realizado.
-- Abril/2027: previsto R$ 120 novamente.
-- MRR conta MRX como R$ 10/mês (120/12).
+- A nova tabela só armazena o histórico — o cálculo do calendário de tráfego continua usando os campos `last_recharge_*` do service (atualizados ao inserir uma nova recarga), evitando refazer a lógica de previsão.
+- O banner anual usa `isPeriodDue` já existente em `src/lib/pricing.ts`.
