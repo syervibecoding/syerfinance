@@ -79,6 +79,7 @@ export default function Recebimentos() {
       const start = parseLocalDate(s.recurrence_start_date);
       if (start && start > monthEnd) return;
       if (!isPeriodDue(s.recurrence_period, s.recurrence_start_date, monthRef)) return;
+      if (!isContractActive(s, monthRef)) return;
       const val = activeValue(s.recurrence_value, s.next_recurrence_value, s.next_value_start, monthRef);
       list.push({
         source_type: "service", source_id: s.id, client: s.client,
