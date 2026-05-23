@@ -51,14 +51,26 @@ export default function Dashboard() {
   }, []);
 
   const metrics = useMemo(() => {
-    const recurringServices = services.filter(s =>
-      s.category !== "Certificado Digital" &&
-      Number(s.recurrence_value) > 0 &&
-      isContractActive(s, monthRef)
-    );
-    const activeContracts = contracts.filter(c => c.status === "Ativo");
-    const mrrGross = recurringServices.reduce((a, s) => a + monthlyEquivalent(s.recurrence_value, s.recurrence_period), 0)
-      + activeContracts.reduce((a, c) => a + Number(c.monthly_value), 0);
+    const monthEnd = new Date(monthRef.getFullYear(), monthRef.getMonth() + 1, 0);
+    const recurringServices = services.filter(s => {
+      if (s.category === "Certificado Digital") return false;
+      if (!(Number(s.recurrence_value) > 0)) return false;
+      if (!isContractActive(s, monthRef)) return false;
+      // só conta a partir do mês de início da recorrência
+      const start = parseLocalDate(s.recurrence_start_date);
+      if (start && start > monthEnd) return false;
+      // anual: só vence no mês de aniversário do start (para MRR sempre divide por 12, ok)
+      return true;
+    });
+    const activeContracts = contracts.filter(c => {
+      if (c.status !== "Ativo") return false;
+      const start = parseLocalDate(c.recurrence_start_date);
+      if (start && start > monthEnd) return false;
+      return true;
+    });
+    const mrrGross = recurringServices.reduce((a, s) => a + monthlyEquivalent(activeValue(s.recurrence_value, s.next_recurrence_value, s.next_value_start, monthRef), s.recurrence_period), 0)
+      + activeContracts.reduce((a, c) => a + Number(activeValue(c.monthly_value, c.next_monthly_value, c.next_value_start, monthRef)), 0)
+      + companies.reduce((a, c) => a + Number(activeValue(c.payment_value, c.next_payment_value, c.next_value_start, monthRef)), 0);
 
     const monthExpenses = expenses.filter(x => sameMonth(x.due_date, monthRef));
     const recurringExpenses = expenses.filter(x => x.is_recurring).reduce((a, x) => a + Number(x.value), 0);
@@ -66,13 +78,19 @@ export default function Dashboard() {
     const proLabore = companies.reduce((a, c) => a + Number(c.payment_value ?? 0), 0);
 
     const mrrNet = mrrGross - totalExpenses;
-    const recurringClients = recurringServices.length + activeContracts.length;
+    const recurringClients = recurringServices.length + activeContracts.length + companies.length;
     const ticket = recurringClients ? mrrGross / recurringClients : 0;
     const ltvAvg = ticket * 12; // assume 12 meses retenção média
 
     const totalPaidByService: Record<string, number> = {};
     implPayments.forEach(p => { totalPaidByService[p.service_id] = (totalPaidByService[p.service_id] ?? 0) + Number(p.value); });
-    const balanceDue = services.reduce((a, s) => a + (Number(s.implementation_charged ?? 0) - (totalPaidByService[s.id] ?? 0)), 0);
+    const balanceDue = services.reduce((a, s) => {
+      const charged = Number(s.implementation_charged ?? 0);
+      const pct = Number(s.discount_percentage ?? 0);
+      const net = charged * (1 - (pct > 0 ? pct / 100 : 0));
+      const paid = totalPaidByService[s.id] ?? 0;
+      return a + Math.max(0, net - paid);
+    }, 0);
     const dailyAverage = mrrGross / daysInMonth(monthRef);
 
     return { mrrGross, mrrNet, totalExpenses, recurringExpenses, ticket, ltvAvg, recurringClients, balanceDue, dailyAverage, proLabore };
