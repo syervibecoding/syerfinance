@@ -148,7 +148,7 @@ export default function Recebimentos() {
     return expected.map(e => {
       const rec = recordIndex.get(`${e.source_type}:${e.source_id}`);
       let status: Status = (rec?.status as Status) ?? "pending";
-      if (!rec) {
+      if (!rec && !e.annual_not_due) {
         const refKeyN = monthRef.getFullYear() * 12 + monthRef.getMonth();
         const todayKeyN = today.getFullYear() * 12 + today.getMonth();
         const isPastMonth = refKeyN < todayKeyN;
