@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { PageHeader } from "@/components/PageHeader";
 import { brl } from "@/lib/format";
-import { activeValue, monthKey, parseLocalDate, isPeriodDue } from "@/lib/pricing";
+import { activeValue, monthKey, parseLocalDate, isPeriodDue, isContractActive } from "@/lib/pricing";
 import { toast } from "@/hooks/use-toast";
 import { CheckCircle2, Circle, AlertTriangle, XCircle, RotateCcw, DollarSign } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -79,6 +79,7 @@ export default function Recebimentos() {
       const start = parseLocalDate(s.recurrence_start_date);
       if (start && start > monthEnd) return;
       if (!isPeriodDue(s.recurrence_period, s.recurrence_start_date, monthRef)) return;
+      if (!isContractActive(s, monthRef)) return;
       const val = activeValue(s.recurrence_value, s.next_recurrence_value, s.next_value_start, monthRef);
       list.push({
         source_type: "service", source_id: s.id, client: s.client,

@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend, Line, ComposedChart } from "recharts";
 import { cn } from "@/lib/utils";
-import { activeValue, isPeriodDue, monthlyEquivalent } from "@/lib/pricing";
+import { activeValue, isPeriodDue, monthlyEquivalent, isContractActive } from "@/lib/pricing";
 
 // Parse 'YYYY-MM-DD' como data LOCAL (evita shift de fuso que joga dia 01 para o mês anterior)
 function parseLocalDate(s: string | null | undefined): Date | null {
@@ -51,7 +51,11 @@ export default function Dashboard() {
   }, []);
 
   const metrics = useMemo(() => {
-    const recurringServices = services.filter(s => s.category !== "Certificado Digital" && Number(s.recurrence_value) > 0);
+    const recurringServices = services.filter(s =>
+      s.category !== "Certificado Digital" &&
+      Number(s.recurrence_value) > 0 &&
+      isContractActive(s, monthRef)
+    );
     const activeContracts = contracts.filter(c => c.status === "Ativo");
     const mrrGross = recurringServices.reduce((a, s) => a + monthlyEquivalent(s.recurrence_value, s.recurrence_period), 0)
       + activeContracts.reduce((a, c) => a + Number(c.monthly_value), 0);
@@ -106,6 +110,7 @@ export default function Dashboard() {
         const start = s.recurrence_start_date ? new Date(s.recurrence_start_date) : null;
         if (start && start > monthEnd) return;
         if (!isPeriodDue(s.recurrence_period, s.recurrence_start_date, refMonth)) return;
+        if (!isContractActive(s, refMonth)) return;
         total += activeValue(s.recurrence_value, s.next_recurrence_value, s.next_value_start, refMonth);
       });
       contracts.filter(c => c.status === "Ativo").forEach(c => {
@@ -214,6 +219,7 @@ export default function Dashboard() {
     const list: { client: string; day: number; value: number; type: string }[] = [];
     services.filter(s => s.category !== "Certificado Digital" && Number(s.recurrence_value) > 0).forEach(s => {
       if (!isPeriodDue(s.recurrence_period, s.recurrence_start_date, monthRef)) return;
+      if (!isContractActive(s, monthRef)) return;
       const val = Number(s.recurrence_value);
       const suffix = s.recurrence_period === "Anual" ? " (anual)" : "";
       if (s.split_payment && s.payment_day_2) {
