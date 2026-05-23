@@ -26,6 +26,8 @@ interface ExpectedRow {
   origin: string;
   expected_value: number;
   due_day?: number | null;
+  annual_not_due?: boolean;
+  annual_due_month?: number | null; // 0-11
 }
 
 const STATUS_LABEL: Record<Status, string> = {
