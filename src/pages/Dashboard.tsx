@@ -51,7 +51,11 @@ export default function Dashboard() {
   }, []);
 
   const metrics = useMemo(() => {
-    const recurringServices = services.filter(s => s.category !== "Certificado Digital" && Number(s.recurrence_value) > 0);
+    const recurringServices = services.filter(s =>
+      s.category !== "Certificado Digital" &&
+      Number(s.recurrence_value) > 0 &&
+      isContractActive(s, monthRef)
+    );
     const activeContracts = contracts.filter(c => c.status === "Ativo");
     const mrrGross = recurringServices.reduce((a, s) => a + monthlyEquivalent(s.recurrence_value, s.recurrence_period), 0)
       + activeContracts.reduce((a, c) => a + Number(c.monthly_value), 0);
