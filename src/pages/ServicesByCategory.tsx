@@ -169,8 +169,10 @@ export default function ServicesByCategory({ category, title }: Props) {
             <TableBody>
               {items.map(it => {
                 const charged = Number(it.implementation_charged ?? 0);
+                const pctDisc = Number(it.discount_percentage ?? 0);
+                const effectiveCharged = pctDisc > 0 ? charged * (1 - pctDisc / 100) : charged;
                 const paid = paidByService[it.id] ?? 0;
-                const pct = charged > 0 ? Math.min(100, (paid / charged) * 100) : 0;
+                const pct = effectiveCharged > 0 ? Math.min(100, (paid / effectiveCharged) * 100) : 0;
                 return (
                 <TableRow key={it.id}>
                   <TableCell className="font-medium">{it.client}</TableCell>
@@ -179,9 +181,9 @@ export default function ServicesByCategory({ category, title }: Props) {
                   <TableCell className="text-right tabular-nums">
                     {charged > 0 ? (
                       <div className="space-y-1">
-                        <div className="text-xs">
-                          <span className={paid >= charged ? "text-foreground font-medium" : "text-muted-foreground"}>{brl(paid)}</span>
-                          <span className="text-muted-foreground"> / {brl(charged)}</span>
+                        <div className="text-xs" title={pctDisc > 0 ? `Cobrado ${brl(charged)} · ${pctDisc}% desconto` : undefined}>
+                          <span className={paid >= effectiveCharged ? "text-foreground font-medium" : "text-muted-foreground"}>{brl(paid)}</span>
+                          <span className="text-muted-foreground"> / {brl(effectiveCharged)}</span>
                         </div>
                         <Progress value={pct} className="h-1" />
                       </div>
