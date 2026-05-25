@@ -131,7 +131,11 @@ export default function ServicesByCategory({ category, title }: Props) {
   const set = (k: string, v: any) => setForm((f: any) => ({ ...f, [k]: v }));
 
   const totalMRR = useMemo(() => items.reduce((a, s) => a + Number(s.recurrence_value ?? 0), 0), [items]);
-  const totalImpl = useMemo(() => items.reduce((a, s) => a + Number(s.implementation_charged ?? 0), 0), [items]);
+  const totalImpl = useMemo(() => items.reduce((a, s) => {
+    const c = Number(s.implementation_charged ?? 0);
+    const p = Number(s.discount_percentage ?? 0);
+    return a + (p > 0 ? c * (1 - p / 100) : c);
+  }, 0), [items]);
 
   const handleDialogClose = (v: boolean) => {
     setOpen(v);
