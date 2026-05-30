@@ -13,7 +13,6 @@ import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PageHeader, EmptyState } from "@/components/PageHeader";
 import { ImplementationPayments } from "@/components/ImplementationPayments";
-import { TrafficRecharges } from "@/components/TrafficRecharges";
 import { brl } from "@/lib/format";
 import { computeContractEnd, monthsBetween } from "@/lib/pricing";
 import { toast } from "@/hooks/use-toast";
@@ -325,7 +324,7 @@ export default function ServicesByCategory({ category, title }: Props) {
             )}
 
             {/* SEÇÃO 3: Implementação (apenas Projetos & Plataformas e Sites) */}
-            {(category === "Plataformas" || category === "Sites") && (
+            {(category === "Plataformas" || category === "Sites" || category === "Marketing") && (
               <Section title="Implementação (cobrança única)" hint="Valor cobrado uma única vez pela montagem/setup.">
                 <div className="grid grid-cols-2 gap-4 mb-3">
                   <Field label="Valor cobrado (R$)">
@@ -390,20 +389,6 @@ export default function ServicesByCategory({ category, title }: Props) {
               </Section>
             )}
 
-            {/* SEÇÃO 5: Tráfego (só Marketing) */}
-            {isMarketing && (
-              <Section title="Tráfego de Anúncios" hint="Recargas + saldo e gasto diário (usado no Calendário de Tráfego).">
-                <div className="grid grid-cols-2 gap-4 mb-4">
-                  <Field label="Gasto médio diário (R$)"><Input type="number" step="0.01" value={form.daily_spend} onChange={e => set("daily_spend", e.target.value)} /></Field>
-                  <Field label="Saldo atual (R$)"><Input type="number" step="0.01" value={form.traffic_balance} onChange={e => set("traffic_balance", e.target.value)} /></Field>
-                  <Field label="Dia de recarga preferido"><Input type="number" min={1} max={31} value={form.traffic_reload_day ?? ""} onChange={e => set("traffic_reload_day", e.target.value)} /></Field>
-                </div>
-                <div className="border-t pt-3">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Histórico de recargas</p>
-                  <TrafficRecharges serviceId={editing?.id ?? null} />
-                </div>
-              </Section>
-            )}
           </div>
 
           <DialogFooter>

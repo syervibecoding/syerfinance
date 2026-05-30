@@ -1,23 +1,29 @@
-## Problema
+## Objetivo
 
-Na listagem de Projetos (ServicesByCategory), a coluna "Implementação" do cliente Use Noronha mostra `R$ 1.800,00 / R$ 2.000,00` com barra ~90%, ignorando o desconto de 10% (Pix). O componente do dialog já foi corrigido, mas a tabela e o total agregado ainda usam `implementation_charged` bruto.
+Na categoria **Publicidade (Marketing)**:
+1. Adicionar a seção de **Implementação (cobrança única)** — idêntica à de Sites/Plataformas (valor cobrado, % de desconto, condição do desconto e registro de pagamentos parciais).
+2. **Remover** do formulário do cliente a seção **"Tráfego de Anúncios"** (gasto diário, saldo, dia de recarga e histórico de recargas).
+3. Manter a página **Calendário de Tráfego** como está.
 
-## Correção em `src/pages/ServicesByCategory.tsx`
+## Alterações em `src/pages/ServicesByCategory.tsx`
 
-1. **Linha da tabela (≈167-184)** — calcular o cobrado efetivo aplicando o desconto:
+1. **Seção de cobrança única (linha ≈328)** — incluir `"Marketing"` na condição que hoje só libera para `Plataformas` e `Sites`:
    ```ts
-   const pctDisc = Number(it.discount_percentage ?? 0);
-   const effectiveCharged = pctDisc > 0 ? charged * (1 - pctDisc/100) : charged;
-   const pct = effectiveCharged > 0 ? Math.min(100, (paid / effectiveCharged) * 100) : 0;
+   {(category === "Plataformas" || category === "Sites" || category === "Marketing") && ( ... )}
    ```
-   Exibir `{brl(paid)} / {brl(effectiveCharged)}`. Manter o `charged` bruto apenas como tooltip opcional (ex.: title no span) para referência — sem poluir o layout.
+   Nada mais muda nessa seção: já tem valor cobrado, desconto, valor com desconto e `<ImplementationPayments />` para pagamentos parciais.
 
-2. **`totalImpl` (linha 134)** — somar `effectiveCharged` em vez de `implementation_charged` bruto, para o total agregado refletir os descontos.
+2. **Remover a Seção 5 "Tráfego de Anúncios" (linhas ≈393-406)** — apaga o bloco `{isMarketing && ( <Section title="Tráfego de Anúncios"> ... </Section> )}`, que contém os campos de gasto diário, saldo, dia de recarga e o componente `<TrafficRecharges />`.
 
-3. **Dashboard** — já está correto (`balanceDue` aplica desconto). Nada a alterar lá.
+3. **Import** — remover o import não utilizado de `TrafficRecharges` (linha 16).
 
-Nenhuma mudança de schema. Apenas alinhar a UI da listagem com a regra de desconto já adotada no dialog e no Dashboard.
+## Pontos de atenção
+
+- A **coluna "Saldo / Diário"** da tabela e a página **Calendário de Tráfego** continuam funcionando com os dados já existentes; apenas deixa de existir a entrada/edição desses dados pelo formulário do cliente (conforme solicitado).
+- A cobrança única já é integrada ao Dashboard via `implementation_payments` (mesma lógica de Sites/Plataformas), então o fluxo de caixa segue refletindo os valores.
+- Sem mudanças de schema.
 
 ## Resultado esperado
 
-Linha do Use Noronha: `R$ 1.800,00 / R$ 1.800,00`, barra 100%. Total de implementação no topo refletindo o líquido com desconto.
+- Ao abrir um serviço de Publicidade, aparece a seção "Implementação (cobrança única)" com valor, desconto e pagamentos.
+- O formulário do cliente não exibe mais nada de recarga/tráfego.
