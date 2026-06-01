@@ -291,6 +291,29 @@ export default function Dashboard() {
     return { operational, operationalTotal, investment };
   }, [expenses, monthRef]);
 
+  // Investimento acumulado ao longo do tempo
+  const investmentData = useMemo(() => {
+    const byMonth: Record<string, number> = {};
+    expenses.filter(x => x.category === "Investimento").forEach(x => {
+      const d = parseLocalDate(x.due_date);
+      if (!d) return;
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      byMonth[key] = (byMonth[key] ?? 0) + Number(x.value);
+    });
+    const keys = Object.keys(byMonth).sort();
+    let acc = 0;
+    const series = keys.map(k => {
+      acc += byMonth[k];
+      const [y, m] = k.split("-");
+      return {
+        month: new Date(Number(y), Number(m) - 1, 1).toLocaleDateString("pt-BR", { month: "short" }).replace(".", "") + "/" + y.slice(-2),
+        mensal: Math.round(byMonth[k] * 100) / 100,
+        acumulado: Math.round(acc * 100) / 100,
+      };
+    });
+    return { series, total: acc };
+  }, [expenses]);
+
   const PIE_COLORS = [
     "hsl(var(--primary))",
     "hsl(var(--info))",
