@@ -1,29 +1,41 @@
 ## Objetivo
 
-Na categoria **Publicidade (Marketing)**:
-1. Adicionar a seção de **Implementação (cobrança única)** — idêntica à de Sites/Plataformas (valor cobrado, % de desconto, condição do desconto e registro de pagamentos parciais).
-2. **Remover** do formulário do cliente a seção **"Tráfego de Anúncios"** (gasto diário, saldo, dia de recarga e histórico de recargas).
-3. Manter a página **Calendário de Tráfego** como está.
+1. Permitir classificar despesas em categorias mais úteis: **Investimento, Infraestrutura, Educação, Despesas Diversas** (mantendo as atuais já usadas).
+2. Mostrar no **Dashboard** uma nova seção com a **divisão de despesas por categoria** (gráfico + lista) do mês selecionado.
+3. Tratar **Investimento** como item separado: ele não reduz o saldo operacional do mês, aparecendo destacado.
 
-## Alterações em `src/pages/ServicesByCategory.tsx`
+## 1. Cadastro de despesas — `src/pages/Expenses.tsx`
 
-1. **Seção de cobrança única (linha ≈328)** — incluir `"Marketing"` na condição que hoje só libera para `Plataformas` e `Sites`:
-   ```ts
-   {(category === "Plataformas" || category === "Sites" || category === "Marketing") && ( ... )}
-   ```
-   Nada mais muda nessa seção: já tem valor cobrado, desconto, valor com desconto e `<ImplementationPayments />` para pagamentos parciais.
+No `Select` de Categoria (≈linha 187-194), acrescentar as novas opções, mantendo as existentes:
+- Adicionar: `Investimento`, `Educação`, `Despesas Diversas`.
+- Manter: `Software`, `Equipe`, `Marketing`, `Infraestrutura`, `Certificado Digital`, `Outros`.
 
-2. **Remover a Seção 5 "Tráfego de Anúncios" (linhas ≈393-406)** — apaga o bloco `{isMarketing && ( <Section title="Tráfego de Anúncios"> ... </Section> )}`, que contém os campos de gasto diário, saldo, dia de recarga e o componente `<TrafficRecharges />`.
+Nenhuma mudança de schema — a coluna `category` (texto livre) já suporta os novos valores.
 
-3. **Import** — remover o import não utilizado de `TrafficRecharges` (linha 16).
+## 2. Dashboard — `src/pages/Dashboard.tsx`
+
+### a) Separar Investimento do fluxo operacional
+- Em `metrics` (≈linha 75-80): calcular `totalExpenses` **excluindo** despesas de categoria `Investimento`, e somar um novo `totalInvestment` (só `Investimento` do mês). `mrrNet` passa a usar o `totalExpenses` operacional.
+- Em `cashflowData` (≈linha 182-184): o cálculo de `saidas` passa a **ignorar** despesas `Investimento`, para o saldo do gráfico refletir só o operacional.
+
+### b) Novo cálculo de divisão por categoria
+- Criar um `useMemo` `expenseBreakdown` que agrupa as despesas do mês selecionado por `category`, somando os valores, ordenado do maior para o menor. Separar visualmente o bloco de `Investimento`.
+
+### c) Nova seção visual (gráfico + lista)
+Adicionar um bloco novo (entre a Linha 2 de mini-KPIs e a Linha 3 do fluxo) com:
+- **Gráfico de pizza** (`PieChart`/`Pie`/`Cell` do recharts) com a proporção de cada categoria operacional no mês.
+- **Lista** ao lado com total por categoria (`brl`) e % do total, usando o padrão de cartões/linhas existente.
+- Um destaque separado para **Investimento** (valor do mês), deixando claro que está fora do operacional.
+
+Cores via tokens do design system (`hsl(var(--...))`), sem cores fixas.
 
 ## Pontos de atenção
 
-- A **coluna "Saldo / Diário"** da tabela e a página **Calendário de Tráfego** continuam funcionando com os dados já existentes; apenas deixa de existir a entrada/edição desses dados pelo formulário do cliente (conforme solicitado).
-- A cobrança única já é integrada ao Dashboard via `implementation_payments` (mesma lógica de Sites/Plataformas), então o fluxo de caixa segue refletindo os valores.
-- Sem mudanças de schema.
+- Mantém toda a lógica atual de fluxo de caixa, recebimentos e certificados intacta; só muda o tratamento de `Investimento` nas saídas.
+- A despesa de "terreno" deve ser reclassificada manualmente para `Investimento`, "IFL Recife" para `Educação` etc. — a tela passa a oferecer essas opções (a reclassificação dos registros antigos é feita pelo usuário editando cada despesa).
+- Conforme regra do projeto, a integração com o Dashboard fica validada: toda despesa continua refletida no fluxo (operacional ou como investimento destacado).
 
 ## Resultado esperado
 
-- Ao abrir um serviço de Publicidade, aparece a seção "Implementação (cobrança única)" com valor, desconto e pagamentos.
-- O formulário do cliente não exibe mais nada de recarga/tráfego.
+- No cadastro de despesas aparecem as categorias Investimento, Infraestrutura, Educação e Despesas Diversas.
+- No Dashboard há uma seção com gráfico + lista mostrando quanto foi gasto por categoria no mês, com Investimento separado e sem distorcer o saldo operacional.
