@@ -9,7 +9,7 @@ import {
   Receipt as ReceiptIcon, Target, Wallet, ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend, Line, ComposedChart } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend, Line, ComposedChart, PieChart, Pie, Cell } from "recharts";
 import { cn } from "@/lib/utils";
 import { activeValue, isPeriodDue, monthlyEquivalent, isContractActive } from "@/lib/pricing";
 
