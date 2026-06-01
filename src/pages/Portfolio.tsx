@@ -49,7 +49,15 @@ export default function Portfolio() {
   };
 
   const set = (k: string, v: any) => setForm((f: any) => ({ ...f, [k]: v }));
-  const totalReceita = items.reduce((a, i) => a + Number(i.payment_value), 0);
+
+  const currentValue = (it: any) => {
+    if (it.next_payment_value != null && it.next_value_start && new Date(it.next_value_start) <= new Date()) {
+      return Number(it.next_payment_value);
+    }
+    return Number(it.payment_value);
+  };
+
+  const totalReceita = items.reduce((a, i) => a + currentValue(i), 0);
 
   return (
     <div>
