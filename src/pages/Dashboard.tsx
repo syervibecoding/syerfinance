@@ -291,6 +291,29 @@ export default function Dashboard() {
     return { operational, operationalTotal, investment };
   }, [expenses, monthRef]);
 
+  // Investimento acumulado ao longo do tempo
+  const investmentData = useMemo(() => {
+    const byMonth: Record<string, number> = {};
+    expenses.filter(x => x.category === "Investimento").forEach(x => {
+      const d = parseLocalDate(x.due_date);
+      if (!d) return;
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      byMonth[key] = (byMonth[key] ?? 0) + Number(x.value);
+    });
+    const keys = Object.keys(byMonth).sort();
+    let acc = 0;
+    const series = keys.map(k => {
+      acc += byMonth[k];
+      const [y, m] = k.split("-");
+      return {
+        month: new Date(Number(y), Number(m) - 1, 1).toLocaleDateString("pt-BR", { month: "short" }).replace(".", "") + "/" + y.slice(-2),
+        mensal: Math.round(byMonth[k] * 100) / 100,
+        acumulado: Math.round(acc * 100) / 100,
+      };
+    });
+    return { series, total: acc };
+  }, [expenses]);
+
   const PIE_COLORS = [
     "hsl(var(--primary))",
     "hsl(var(--info))",
@@ -494,6 +517,45 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Investimento acumulado */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between pb-2 gap-4 flex-wrap">
+          <div>
+            <CardTitle className="text-lg">Investimento Acumulado</CardTitle>
+            <p className="text-xs text-muted-foreground mt-1">Total investido ao longo do tempo</p>
+          </div>
+          <div className="rounded-lg border border-info/30 bg-info-soft/40 px-4 py-2">
+            <div className="text-[10px] font-semibold tracking-[0.15em] uppercase text-info/80">Total acumulado</div>
+            <div className="text-2xl font-bold tabular-nums text-info">{brl(investmentData.total)}</div>
+          </div>
+        </CardHeader>
+        <CardContent className="h-72">
+          {investmentData.series.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-12 text-center">Nenhum investimento registrado ainda.</p>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={investmentData.series} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false} />
+                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} axisLine={false}
+                  tickFormatter={(v) => `R$ ${(v/1000).toFixed(1)}k`} />
+                <Tooltip
+                  contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
+                  formatter={(v: number, name: string) => {
+                    const labels: Record<string, string> = { mensal: "No mês", acumulado: "Acumulado" };
+                    return [brl(v), labels[name] ?? name];
+                  }}
+                />
+                <Bar dataKey="mensal" fill="hsl(var(--info) / 0.35)" radius={[4, 4, 0, 0]} />
+                <Line type="monotone" dataKey="acumulado" stroke="hsl(var(--info))" strokeWidth={2.5} dot={{ r: 3 }} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          )}
+        </CardContent>
+      </Card>
+
+
 
       {/* Linha 3: Fluxo de Caixa + Calendário de Recebimentos */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
