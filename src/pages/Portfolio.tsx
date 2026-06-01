@@ -78,7 +78,10 @@ export default function Portfolio() {
                 <Badge variant="outline" className="shrink-0">{it.equity}%</Badge>
               </CardHeader>
               <CardContent className="space-y-2 text-sm">
-                <div className="flex justify-between"><span className="text-muted-foreground">Pró-labore</span><span className="font-medium tabular-nums">{brl(it.payment_value)}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Pró-labore</span><span className="font-medium tabular-nums">{brl(currentValue(it))}</span></div>
+                {it.next_payment_value != null && it.next_value_start && new Date(it.next_value_start) > new Date() && (
+                  <div className="flex justify-between text-xs"><span className="text-muted-foreground">A partir de {new Date(it.next_value_start).toLocaleDateString("pt-BR")}</span><span className="tabular-nums text-muted-foreground">{brl(it.next_payment_value)}</span></div>
+                )}
                 <div className="flex justify-between"><span className="text-muted-foreground">Dia pagto</span><span className="font-medium">{it.payment_day || "-"}</span></div>
                 <div className="flex gap-1 pt-2 opacity-0 group-hover:opacity-100 transition-opacity">
                   <Button variant="outline" size="sm" className="flex-1" onClick={() => openEdit(it)}><Pencil className="h-3.5 w-3.5 mr-1" />Editar</Button>
