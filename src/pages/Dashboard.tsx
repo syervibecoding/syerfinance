@@ -426,6 +426,75 @@ export default function Dashboard() {
         </Card>
       )}
 
+      {/* Divisão de despesas por categoria */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg">Despesas por Categoria</CardTitle>
+            <p className="text-xs text-muted-foreground mt-1">Distribuição operacional do mês</p>
+          </CardHeader>
+          <CardContent className="h-64">
+            {expenseBreakdown.operational.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-12 text-center">Sem despesas operacionais no mês.</p>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={expenseBreakdown.operational}
+                    dataKey="value"
+                    nameKey="category"
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={48}
+                    outerRadius={80}
+                    paddingAngle={2}
+                  >
+                    {expenseBreakdown.operational.map((_, i) => (
+                      <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
+                    formatter={(v: number, n: string) => [brl(v), n]}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="lg:col-span-2">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg">Detalhamento por Categoria</CardTitle>
+            <p className="text-xs text-muted-foreground mt-1">Total: {brl(expenseBreakdown.operationalTotal)}</p>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {expenseBreakdown.operational.map((c, i) => {
+              const pct = expenseBreakdown.operationalTotal > 0 ? (c.value / expenseBreakdown.operationalTotal) * 100 : 0;
+              return (
+                <div key={c.category} className="flex items-center gap-3">
+                  <span className="h-3 w-3 rounded-sm shrink-0" style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
+                  <span className="text-sm font-medium flex-1 truncate">{c.category}</span>
+                  <span className="text-xs text-muted-foreground tabular-nums w-12 text-right">{pct.toFixed(0)}%</span>
+                  <span className="text-sm font-semibold tabular-nums w-28 text-right">{brl(c.value)}</span>
+                </div>
+              );
+            })}
+            {expenseBreakdown.operational.length === 0 && (
+              <p className="text-sm text-muted-foreground py-4 text-center">Sem despesas operacionais no mês.</p>
+            )}
+            <div className="mt-3 flex items-center gap-3 rounded-lg border border-info/30 bg-info-soft/40 px-3 py-2.5">
+              <div className="rounded-md bg-info/20 p-1.5 text-info"><Target className="h-4 w-4" /></div>
+              <div className="flex-1">
+                <div className="text-[10px] font-semibold tracking-[0.15em] uppercase text-info/80">Investimento (fora do operacional)</div>
+                <div className="text-xs text-muted-foreground">Não reduz o saldo do mês</div>
+              </div>
+              <span className="text-base font-bold tabular-nums text-info">{brl(metrics.totalInvestment)}</span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Linha 3: Fluxo de Caixa + Calendário de Recebimentos */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <Card className="lg:col-span-2">
