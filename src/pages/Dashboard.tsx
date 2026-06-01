@@ -294,7 +294,7 @@ export default function Dashboard() {
   // Investimento acumulado ao longo do tempo
   const investmentData = useMemo(() => {
     const byMonth: Record<string, number> = {};
-    expenses.filter(x => x.category === "Investimento").forEach(x => {
+    expenses.filter(x => x.category === "Investimento" && x.status === "Pago").forEach(x => {
       const d = parseLocalDate(x.due_date);
       if (!d) return;
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
