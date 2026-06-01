@@ -274,6 +274,33 @@ export default function Dashboard() {
     return list.sort((a, b) => a.day - b.day);
   }, [services, contracts, companies, monthRef]);
 
+  // Divisão de despesas por categoria no mês (Investimento separado)
+  const expenseBreakdown = useMemo(() => {
+    const monthExpenses = expenses.filter(x => sameMonth(x.due_date, monthRef));
+    const totals: Record<string, number> = {};
+    monthExpenses.forEach(x => {
+      const cat = x.category || "Outros";
+      totals[cat] = (totals[cat] ?? 0) + Number(x.value);
+    });
+    const investment = totals["Investimento"] ?? 0;
+    delete totals["Investimento"];
+    const operational = Object.entries(totals)
+      .map(([category, value]) => ({ category, value }))
+      .sort((a, b) => b.value - a.value);
+    const operationalTotal = operational.reduce((a, c) => a + c.value, 0);
+    return { operational, operationalTotal, investment };
+  }, [expenses, monthRef]);
+
+  const PIE_COLORS = [
+    "hsl(var(--primary))",
+    "hsl(var(--info))",
+    "hsl(var(--success))",
+    "hsl(var(--warning))",
+    "hsl(var(--accent))",
+    "hsl(var(--destructive))",
+    "hsl(var(--muted-foreground))",
+  ];
+
   return (
     <div className="space-y-6">
       <PageHeader
