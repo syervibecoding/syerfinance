@@ -73,8 +73,9 @@ export default function Dashboard() {
       + companies.reduce((a, c) => a + Number(activeValue(c.payment_value, c.next_payment_value, c.next_value_start, monthRef)), 0);
 
     const monthExpenses = expenses.filter(x => sameMonth(x.due_date, monthRef));
-    const recurringExpenses = expenses.filter(x => x.is_recurring).reduce((a, x) => a + Number(x.value), 0);
-    const totalExpenses = monthExpenses.reduce((a, x) => a + Number(x.value), 0);
+    const recurringExpenses = expenses.filter(x => x.is_recurring && x.category !== "Investimento").reduce((a, x) => a + Number(x.value), 0);
+    const totalInvestment = monthExpenses.filter(x => x.category === "Investimento").reduce((a, x) => a + Number(x.value), 0);
+    const totalExpenses = monthExpenses.filter(x => x.category !== "Investimento").reduce((a, x) => a + Number(x.value), 0);
     const proLabore = companies.reduce((a, c) => a + Number(c.payment_value ?? 0), 0);
 
     const mrrNet = mrrGross - totalExpenses;
@@ -93,7 +94,7 @@ export default function Dashboard() {
     }, 0);
     const dailyAverage = mrrGross / daysInMonth(monthRef);
 
-    return { mrrGross, mrrNet, totalExpenses, recurringExpenses, ticket, ltvAvg, recurringClients, balanceDue, dailyAverage, proLabore };
+    return { mrrGross, mrrNet, totalExpenses, totalInvestment, recurringExpenses, ticket, ltvAvg, recurringClients, balanceDue, dailyAverage, proLabore };
   }, [services, contracts, expenses, companies, implPayments, monthRef]);
 
   // Entradas históricas simuladas (não cadastradas na plataforma) — chave: "YYYY-M" (mês 0-indexado)
