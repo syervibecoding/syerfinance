@@ -181,6 +181,7 @@ export default function Dashboard() {
         .reduce((a, s) => a + Number(s.value || 0), 0);
       const entradasBase = entradasTotal - certificados;
       const saidas = expenses
+        .filter(x => x.category !== "Investimento")
         .filter(x => { const d = new Date(x.due_date); return d.getFullYear() === m.year && d.getMonth() === m.month; })
         .reduce((a, x) => a + Number(x.value), 0);
       return {
