@@ -185,10 +185,13 @@ export default function Expenses() {
               <Select value={form.category} onValueChange={v => set("category", v)}>
                 <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="Investimento">Investimento</SelectItem>
+                  <SelectItem value="Infraestrutura">Infraestrutura</SelectItem>
+                  <SelectItem value="Educação">Educação</SelectItem>
+                  <SelectItem value="Despesas Diversas">Despesas Diversas</SelectItem>
                   <SelectItem value="Software">Software</SelectItem>
                   <SelectItem value="Equipe">Equipe</SelectItem>
                   <SelectItem value="Marketing">Marketing</SelectItem>
-                  <SelectItem value="Infraestrutura">Infraestrutura</SelectItem>
                   <SelectItem value="Certificado Digital">Certificado Digital</SelectItem>
                   <SelectItem value="Outros">Outros</SelectItem>
                 </SelectContent>

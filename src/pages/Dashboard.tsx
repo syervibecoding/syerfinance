@@ -9,7 +9,7 @@ import {
   Receipt as ReceiptIcon, Target, Wallet, ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend, Line, ComposedChart } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend, Line, ComposedChart, PieChart, Pie, Cell } from "recharts";
 import { cn } from "@/lib/utils";
 import { activeValue, isPeriodDue, monthlyEquivalent, isContractActive } from "@/lib/pricing";
 
@@ -73,8 +73,9 @@ export default function Dashboard() {
       + companies.reduce((a, c) => a + Number(activeValue(c.payment_value, c.next_payment_value, c.next_value_start, monthRef)), 0);
 
     const monthExpenses = expenses.filter(x => sameMonth(x.due_date, monthRef));
-    const recurringExpenses = expenses.filter(x => x.is_recurring).reduce((a, x) => a + Number(x.value), 0);
-    const totalExpenses = monthExpenses.reduce((a, x) => a + Number(x.value), 0);
+    const recurringExpenses = expenses.filter(x => x.is_recurring && x.category !== "Investimento").reduce((a, x) => a + Number(x.value), 0);
+    const totalInvestment = monthExpenses.filter(x => x.category === "Investimento").reduce((a, x) => a + Number(x.value), 0);
+    const totalExpenses = monthExpenses.filter(x => x.category !== "Investimento").reduce((a, x) => a + Number(x.value), 0);
     const proLabore = companies.reduce((a, c) => a + Number(c.payment_value ?? 0), 0);
 
     const mrrNet = mrrGross - totalExpenses;
@@ -93,7 +94,7 @@ export default function Dashboard() {
     }, 0);
     const dailyAverage = mrrGross / daysInMonth(monthRef);
 
-    return { mrrGross, mrrNet, totalExpenses, recurringExpenses, ticket, ltvAvg, recurringClients, balanceDue, dailyAverage, proLabore };
+    return { mrrGross, mrrNet, totalExpenses, totalInvestment, recurringExpenses, ticket, ltvAvg, recurringClients, balanceDue, dailyAverage, proLabore };
   }, [services, contracts, expenses, companies, implPayments, monthRef]);
 
   // Entradas históricas simuladas (não cadastradas na plataforma) — chave: "YYYY-M" (mês 0-indexado)
@@ -180,6 +181,7 @@ export default function Dashboard() {
         .reduce((a, s) => a + Number(s.value || 0), 0);
       const entradasBase = entradasTotal - certificados;
       const saidas = expenses
+        .filter(x => x.category !== "Investimento")
         .filter(x => { const d = new Date(x.due_date); return d.getFullYear() === m.year && d.getMonth() === m.month; })
         .reduce((a, x) => a + Number(x.value), 0);
       return {
@@ -271,6 +273,33 @@ export default function Dashboard() {
       });
     return list.sort((a, b) => a.day - b.day);
   }, [services, contracts, companies, monthRef]);
+
+  // Divisão de despesas por categoria no mês (Investimento separado)
+  const expenseBreakdown = useMemo(() => {
+    const monthExpenses = expenses.filter(x => sameMonth(x.due_date, monthRef));
+    const totals: Record<string, number> = {};
+    monthExpenses.forEach(x => {
+      const cat = x.category || "Outros";
+      totals[cat] = (totals[cat] ?? 0) + Number(x.value);
+    });
+    const investment = totals["Investimento"] ?? 0;
+    delete totals["Investimento"];
+    const operational = Object.entries(totals)
+      .map(([category, value]) => ({ category, value }))
+      .sort((a, b) => b.value - a.value);
+    const operationalTotal = operational.reduce((a, c) => a + c.value, 0);
+    return { operational, operationalTotal, investment };
+  }, [expenses, monthRef]);
+
+  const PIE_COLORS = [
+    "hsl(var(--primary))",
+    "hsl(var(--info))",
+    "hsl(var(--success))",
+    "hsl(var(--warning))",
+    "hsl(var(--accent))",
+    "hsl(var(--destructive))",
+    "hsl(var(--muted-foreground))",
+  ];
 
   return (
     <div className="space-y-6">
@@ -396,6 +425,75 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       )}
+
+      {/* Divisão de despesas por categoria */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg">Despesas por Categoria</CardTitle>
+            <p className="text-xs text-muted-foreground mt-1">Distribuição operacional do mês</p>
+          </CardHeader>
+          <CardContent className="h-64">
+            {expenseBreakdown.operational.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-12 text-center">Sem despesas operacionais no mês.</p>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={expenseBreakdown.operational}
+                    dataKey="value"
+                    nameKey="category"
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={48}
+                    outerRadius={80}
+                    paddingAngle={2}
+                  >
+                    {expenseBreakdown.operational.map((_, i) => (
+                      <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
+                    formatter={(v: number, n: string) => [brl(v), n]}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="lg:col-span-2">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg">Detalhamento por Categoria</CardTitle>
+            <p className="text-xs text-muted-foreground mt-1">Total: {brl(expenseBreakdown.operationalTotal)}</p>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {expenseBreakdown.operational.map((c, i) => {
+              const pct = expenseBreakdown.operationalTotal > 0 ? (c.value / expenseBreakdown.operationalTotal) * 100 : 0;
+              return (
+                <div key={c.category} className="flex items-center gap-3">
+                  <span className="h-3 w-3 rounded-sm shrink-0" style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
+                  <span className="text-sm font-medium flex-1 truncate">{c.category}</span>
+                  <span className="text-xs text-muted-foreground tabular-nums w-12 text-right">{pct.toFixed(0)}%</span>
+                  <span className="text-sm font-semibold tabular-nums w-28 text-right">{brl(c.value)}</span>
+                </div>
+              );
+            })}
+            {expenseBreakdown.operational.length === 0 && (
+              <p className="text-sm text-muted-foreground py-4 text-center">Sem despesas operacionais no mês.</p>
+            )}
+            <div className="mt-3 flex items-center gap-3 rounded-lg border border-info/30 bg-info-soft/40 px-3 py-2.5">
+              <div className="rounded-md bg-info/20 p-1.5 text-info"><Target className="h-4 w-4" /></div>
+              <div className="flex-1">
+                <div className="text-[10px] font-semibold tracking-[0.15em] uppercase text-info/80">Investimento (fora do operacional)</div>
+                <div className="text-xs text-muted-foreground">Não reduz o saldo do mês</div>
+              </div>
+              <span className="text-base font-bold tabular-nums text-info">{brl(metrics.totalInvestment)}</span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Linha 3: Fluxo de Caixa + Calendário de Recebimentos */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
