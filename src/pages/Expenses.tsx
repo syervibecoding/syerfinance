@@ -265,6 +265,41 @@ export default function Expenses() {
           <DialogFooter><Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button><Button onClick={save}>Salvar</Button></DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={catOpen} onOpenChange={setCatOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Gerenciar categorias</DialogTitle></DialogHeader>
+          <div className="space-y-2 py-2">
+            <div className="flex gap-2">
+              <Input placeholder="Nova categoria" value={newCat} onChange={e => setNewCat(e.target.value)}
+                onKeyDown={e => { if (e.key === "Enter") addCategory(); }} />
+              <Button onClick={addCategory}><Plus className="h-4 w-4" /> Adicionar</Button>
+            </div>
+            <div className="max-h-72 overflow-y-auto divide-y">
+              {categories.map(c => (
+                <div key={c.id} className="flex items-center gap-2 py-2">
+                  {editCatId === c.id ? (
+                    <>
+                      <Input value={editCatName} onChange={e => setEditCatName(e.target.value)}
+                        onKeyDown={e => { if (e.key === "Enter") renameCategory(c.id); }} />
+                      <Button variant="ghost" size="icon" onClick={() => renameCategory(c.id)}><Check className="h-4 w-4" /></Button>
+                      <Button variant="ghost" size="icon" onClick={() => { setEditCatId(null); setEditCatName(""); }}><X className="h-4 w-4" /></Button>
+                    </>
+                  ) : (
+                    <>
+                      <span className="flex-1 text-sm">{c.name}</span>
+                      <Button variant="ghost" size="icon" onClick={() => { setEditCatId(c.id); setEditCatName(c.name); }}><Pencil className="h-4 w-4" /></Button>
+                      <Button variant="ghost" size="icon" onClick={() => removeCategory(c.id)}><Trash2 className="h-4 w-4" /></Button>
+                    </>
+                  )}
+                </div>
+              ))}
+              {categories.length === 0 && <div className="text-sm text-muted-foreground py-4 text-center">Nenhuma categoria.</div>}
+            </div>
+          </div>
+          <DialogFooter><Button variant="ghost" onClick={() => setCatOpen(false)}>Fechar</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
