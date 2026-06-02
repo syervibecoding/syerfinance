@@ -13,12 +13,17 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { PageHeader, EmptyState } from "@/components/PageHeader";
 import { brl, fmtDate, sameMonth } from "@/lib/format";
 import { toast } from "@/hooks/use-toast";
-import { Pencil, Trash2, RotateCcw, Layers } from "lucide-react";
+import { Pencil, Trash2, RotateCcw, Layers, Tags, Plus, Check, X } from "lucide-react";
 
 const empty = {
   description: "", value: 0, category: "", due_date: "", status: "Pendente",
   is_recurring: false, installments_total: 1, installments_current: 1,
 };
+
+const DEFAULT_CATEGORIES = [
+  "Investimento", "Infraestrutura", "Educação", "Despesas Diversas",
+  "Software", "Equipe", "Marketing", "Certificado Digital", "Outros",
+];
 
 export default function Expenses() {
   const { user } = useAuth();
@@ -27,12 +32,57 @@ export default function Expenses() {
   const [editing, setEditing] = useState<any | null>(null);
   const [form, setForm] = useState<any>(empty);
   const [monthRef, setMonthRef] = useState(new Date());
+  const [categories, setCategories] = useState<any[]>([]);
+  const [catOpen, setCatOpen] = useState(false);
+  const [newCat, setNewCat] = useState("");
+  const [editCatId, setEditCatId] = useState<string | null>(null);
+  const [editCatName, setEditCatName] = useState("");
 
   const load = async () => {
     const { data } = await supabase.from("expenses").select("*").order("due_date", { ascending: true });
     setItems(data ?? []);
   };
+
+  const loadCategories = async () => {
+    if (!user) return;
+    const { data } = await supabase.from("expense_categories").select("*").order("name", { ascending: true });
+    if (!data || data.length === 0) {
+      const rows = DEFAULT_CATEGORIES.map(name => ({ user_id: user.id, name }));
+      await supabase.from("expense_categories").insert(rows);
+      const { data: seeded } = await supabase.from("expense_categories").select("*").order("name", { ascending: true });
+      setCategories(seeded ?? []);
+    } else {
+      setCategories(data);
+    }
+  };
+
   useEffect(() => { load(); }, []);
+  useEffect(() => { loadCategories(); }, [user]);
+
+  const addCategory = async () => {
+    if (!user) return;
+    const name = newCat.trim();
+    if (!name) return;
+    const { error } = await supabase.from("expense_categories").insert({ user_id: user.id, name });
+    if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); return; }
+    setNewCat("");
+    loadCategories();
+  };
+
+  const renameCategory = async (id: string) => {
+    const name = editCatName.trim();
+    if (!name) return;
+    const { error } = await supabase.from("expense_categories").update({ name }).eq("id", id);
+    if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); return; }
+    setEditCatId(null); setEditCatName("");
+    loadCategories();
+  };
+
+  const removeCategory = async (id: string) => {
+    if (!confirm("Excluir categoria? As despesas já lançadas mantêm o nome atual.")) return;
+    await supabase.from("expense_categories").delete().eq("id", id);
+    loadCategories();
+  };
 
   const openNew = () => { setEditing(null); setForm(empty); setOpen(true); };
   const openEdit = (it: any) => { setEditing(it); setForm({ ...empty, ...it }); setOpen(true); };
