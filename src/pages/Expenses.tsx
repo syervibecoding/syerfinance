@@ -188,6 +188,12 @@ export default function Expenses() {
         monthRef={monthRef} onMonthChange={setMonthRef}
       />
 
+      <div className="flex justify-end mb-3">
+        <Button variant="outline" size="sm" onClick={() => setCatOpen(true)}>
+          <Tags className="h-4 w-4" /> Gerenciar categorias
+        </Button>
+      </div>
+
       {monthItems.length === 0 ? <EmptyState message="Sem despesas neste mês." /> : (
         <Card>
           <Table>
