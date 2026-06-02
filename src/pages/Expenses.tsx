@@ -13,12 +13,17 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { PageHeader, EmptyState } from "@/components/PageHeader";
 import { brl, fmtDate, sameMonth } from "@/lib/format";
 import { toast } from "@/hooks/use-toast";
-import { Pencil, Trash2, RotateCcw, Layers } from "lucide-react";
+import { Pencil, Trash2, RotateCcw, Layers, Tags, Plus, Check, X } from "lucide-react";
 
 const empty = {
   description: "", value: 0, category: "", due_date: "", status: "Pendente",
   is_recurring: false, installments_total: 1, installments_current: 1,
 };
+
+const DEFAULT_CATEGORIES = [
+  "Investimento", "Infraestrutura", "Educação", "Despesas Diversas",
+  "Software", "Equipe", "Marketing", "Certificado Digital", "Outros",
+];
 
 export default function Expenses() {
   const { user } = useAuth();
@@ -27,12 +32,57 @@ export default function Expenses() {
   const [editing, setEditing] = useState<any | null>(null);
   const [form, setForm] = useState<any>(empty);
   const [monthRef, setMonthRef] = useState(new Date());
+  const [categories, setCategories] = useState<any[]>([]);
+  const [catOpen, setCatOpen] = useState(false);
+  const [newCat, setNewCat] = useState("");
+  const [editCatId, setEditCatId] = useState<string | null>(null);
+  const [editCatName, setEditCatName] = useState("");
 
   const load = async () => {
     const { data } = await supabase.from("expenses").select("*").order("due_date", { ascending: true });
     setItems(data ?? []);
   };
+
+  const loadCategories = async () => {
+    if (!user) return;
+    const { data } = await supabase.from("expense_categories").select("*").order("name", { ascending: true });
+    if (!data || data.length === 0) {
+      const rows = DEFAULT_CATEGORIES.map(name => ({ user_id: user.id, name }));
+      await supabase.from("expense_categories").insert(rows);
+      const { data: seeded } = await supabase.from("expense_categories").select("*").order("name", { ascending: true });
+      setCategories(seeded ?? []);
+    } else {
+      setCategories(data);
+    }
+  };
+
   useEffect(() => { load(); }, []);
+  useEffect(() => { loadCategories(); }, [user]);
+
+  const addCategory = async () => {
+    if (!user) return;
+    const name = newCat.trim();
+    if (!name) return;
+    const { error } = await supabase.from("expense_categories").insert({ user_id: user.id, name });
+    if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); return; }
+    setNewCat("");
+    loadCategories();
+  };
+
+  const renameCategory = async (id: string) => {
+    const name = editCatName.trim();
+    if (!name) return;
+    const { error } = await supabase.from("expense_categories").update({ name }).eq("id", id);
+    if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); return; }
+    setEditCatId(null); setEditCatName("");
+    loadCategories();
+  };
+
+  const removeCategory = async (id: string) => {
+    if (!confirm("Excluir categoria? As despesas já lançadas mantêm o nome atual.")) return;
+    await supabase.from("expense_categories").delete().eq("id", id);
+    loadCategories();
+  };
 
   const openNew = () => { setEditing(null); setForm(empty); setOpen(true); };
   const openEdit = (it: any) => { setEditing(it); setForm({ ...empty, ...it }); setOpen(true); };
@@ -138,6 +188,12 @@ export default function Expenses() {
         monthRef={monthRef} onMonthChange={setMonthRef}
       />
 
+      <div className="flex justify-end mb-3">
+        <Button variant="outline" size="sm" onClick={() => setCatOpen(true)}>
+          <Tags className="h-4 w-4" /> Gerenciar categorias
+        </Button>
+      </div>
+
       {monthItems.length === 0 ? <EmptyState message="Sem despesas neste mês." /> : (
         <Card>
           <Table>
@@ -185,15 +241,7 @@ export default function Expenses() {
               <Select value={form.category} onValueChange={v => set("category", v)}>
                 <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Investimento">Investimento</SelectItem>
-                  <SelectItem value="Infraestrutura">Infraestrutura</SelectItem>
-                  <SelectItem value="Educação">Educação</SelectItem>
-                  <SelectItem value="Despesas Diversas">Despesas Diversas</SelectItem>
-                  <SelectItem value="Software">Software</SelectItem>
-                  <SelectItem value="Equipe">Equipe</SelectItem>
-                  <SelectItem value="Marketing">Marketing</SelectItem>
-                  <SelectItem value="Certificado Digital">Certificado Digital</SelectItem>
-                  <SelectItem value="Outros">Outros</SelectItem>
+                  {categories.map(c => <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </F>
@@ -215,6 +263,41 @@ export default function Expenses() {
             </div>
           </div>
           <DialogFooter><Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button><Button onClick={save}>Salvar</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={catOpen} onOpenChange={setCatOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Gerenciar categorias</DialogTitle></DialogHeader>
+          <div className="space-y-2 py-2">
+            <div className="flex gap-2">
+              <Input placeholder="Nova categoria" value={newCat} onChange={e => setNewCat(e.target.value)}
+                onKeyDown={e => { if (e.key === "Enter") addCategory(); }} />
+              <Button onClick={addCategory}><Plus className="h-4 w-4" /> Adicionar</Button>
+            </div>
+            <div className="max-h-72 overflow-y-auto divide-y">
+              {categories.map(c => (
+                <div key={c.id} className="flex items-center gap-2 py-2">
+                  {editCatId === c.id ? (
+                    <>
+                      <Input value={editCatName} onChange={e => setEditCatName(e.target.value)}
+                        onKeyDown={e => { if (e.key === "Enter") renameCategory(c.id); }} />
+                      <Button variant="ghost" size="icon" onClick={() => renameCategory(c.id)}><Check className="h-4 w-4" /></Button>
+                      <Button variant="ghost" size="icon" onClick={() => { setEditCatId(null); setEditCatName(""); }}><X className="h-4 w-4" /></Button>
+                    </>
+                  ) : (
+                    <>
+                      <span className="flex-1 text-sm">{c.name}</span>
+                      <Button variant="ghost" size="icon" onClick={() => { setEditCatId(c.id); setEditCatName(c.name); }}><Pencil className="h-4 w-4" /></Button>
+                      <Button variant="ghost" size="icon" onClick={() => removeCategory(c.id)}><Trash2 className="h-4 w-4" /></Button>
+                    </>
+                  )}
+                </div>
+              ))}
+              {categories.length === 0 && <div className="text-sm text-muted-foreground py-4 text-center">Nenhuma categoria.</div>}
+            </div>
+          </div>
+          <DialogFooter><Button variant="ghost" onClick={() => setCatOpen(false)}>Fechar</Button></DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
