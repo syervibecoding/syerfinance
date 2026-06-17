@@ -1,0 +1,2 @@
+ALTER TABLE public.services DROP CONSTRAINT IF EXISTS services_status_check;
+ALTER TABLE public.services ADD CONSTRAINT services_status_check CHECK (status = ANY (ARRAY['Pendente'::text, 'Em Produção'::text, 'Ativo'::text, 'Entregue'::text, 'Atrasado'::text, 'Encerrado'::text]));
