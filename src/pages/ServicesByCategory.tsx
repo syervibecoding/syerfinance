@@ -244,6 +244,11 @@ export default function ServicesByCategory({ category, title }: Props) {
                     <SelectContent>{STATUSES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
                   </Select>
                 </Field>
+                {form.status === "Encerrado" && (
+                  <Field label="Data do último pagamento" required helper="A receita conta até o mês desta data e zera depois.">
+                    <Input type="date" value={form.end_date} onChange={e => set("end_date", e.target.value)} />
+                  </Field>
+                )}
                 <Field label="Prazo (texto livre)">
                   <Input value={form.deadline} onChange={e => set("deadline", e.target.value)} placeholder="ex: 05 Abr" />
                 </Field>
