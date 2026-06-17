@@ -191,7 +191,7 @@ export default function ServicesByCategory({ category, title }: Props) {
                     ) : <span className="text-muted-foreground">-</span>}
                   </TableCell>
                   <TableCell className="text-right tabular-nums text-muted-foreground">
-                    {it.recurrence_value ? `${brl(vigente(it) || Number(activeValue(it.recurrence_value, it.next_recurrence_value, it.next_value_start, now)))}/${it.recurrence_period === "Anual" ? "ano" : "mês"}` : "-"}
+                    {it.recurrence_value ? `${brl(activeValue(it.recurrence_value, it.next_recurrence_value, it.next_value_start, now))}/${it.recurrence_period === "Anual" ? "ano" : "mês"}` : "-"}
                   </TableCell>
                   {isMarketing && (
                     <TableCell className="text-right tabular-nums text-muted-foreground">
