@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend, Line, ComposedChart, PieChart, Pie, Cell } from "recharts";
 import { cn } from "@/lib/utils";
-import { activeValue, isPeriodDue, monthlyEquivalent, isContractActive } from "@/lib/pricing";
+import { activeValue, isPeriodDue, monthlyEquivalent, isContractActive, isServiceActive } from "@/lib/pricing";
 
 // Parse 'YYYY-MM-DD' como data LOCAL (evita shift de fuso que joga dia 01 para o mês anterior)
 function parseLocalDate(s: string | null | undefined): Date | null {
@@ -56,6 +56,7 @@ export default function Dashboard() {
       if (s.category === "Certificado Digital") return false;
       if (!(Number(s.recurrence_value) > 0)) return false;
       if (!isContractActive(s, monthRef)) return false;
+      if (!isServiceActive(s, monthRef)) return false;
       // só conta a partir do mês de início da recorrência
       const start = parseLocalDate(s.recurrence_start_date);
       if (start && start > monthEnd) return false;
@@ -130,6 +131,7 @@ export default function Dashboard() {
         if (start && start > monthEnd) return;
         if (!isPeriodDue(s.recurrence_period, s.recurrence_start_date, refMonth)) return;
         if (!isContractActive(s, refMonth)) return;
+        if (!isServiceActive(s, refMonth)) return;
         total += activeValue(s.recurrence_value, s.next_recurrence_value, s.next_value_start, refMonth);
       });
       contracts.filter(c => c.status === "Ativo").forEach(c => {
@@ -240,7 +242,8 @@ export default function Dashboard() {
     services.filter(s => s.category !== "Certificado Digital" && Number(s.recurrence_value) > 0).forEach(s => {
       if (!isPeriodDue(s.recurrence_period, s.recurrence_start_date, monthRef)) return;
       if (!isContractActive(s, monthRef)) return;
-      const val = Number(s.recurrence_value);
+      if (!isServiceActive(s, monthRef)) return;
+      const val = Number(activeValue(s.recurrence_value, s.next_recurrence_value, s.next_value_start, monthRef));
       const suffix = s.recurrence_period === "Anual" ? " (anual)" : "";
       if (s.split_payment && s.payment_day_2) {
         list.push({ client: `${s.client} (1ª parcela)${suffix}`, day: s.payment_day ?? 1, value: val / 2, type: s.category });

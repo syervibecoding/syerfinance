@@ -14,12 +14,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { PageHeader, EmptyState } from "@/components/PageHeader";
 import { ImplementationPayments } from "@/components/ImplementationPayments";
 import { brl } from "@/lib/format";
-import { computeContractEnd, monthsBetween } from "@/lib/pricing";
+import { computeContractEnd, monthsBetween, activeValue, isServiceActive } from "@/lib/pricing";
 import { toast } from "@/hooks/use-toast";
 import { Pencil, Trash2, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const STATUSES = ["Pendente", "Em Produção", "Ativo", "Entregue", "Atrasado"] as const;
+const STATUSES = ["Pendente", "Em Produção", "Ativo", "Entregue", "Atrasado", "Encerrado"] as const;
 const PERIODS = ["Mensal", "Anual"] as const;
 
 const baseEmpty = {
@@ -30,14 +30,14 @@ const baseEmpty = {
   next_recurrence_value: "", next_value_start: "",
   payment_day: null as number | null, traffic_reload_day: null as number | null,
   discount_percentage: 0, discount_type: "",
-  has_contract: false, contract_end_date: "",
+  has_contract: false, contract_end_date: "", end_date: "",
   last_recharge_value: 0, last_recharge_date: "", daily_spend: 0, traffic_balance: 0,
   split_payment: false, payment_day_2: null as number | null,
 };
 
 const statusVariant: Record<string, any> = {
   "Pendente": "secondary", "Em Produção": "default", "Ativo": "default",
-  "Entregue": "outline", "Atrasado": "destructive",
+  "Entregue": "outline", "Atrasado": "destructive", "Encerrado": "secondary",
 };
 
 interface Props {
@@ -73,6 +73,7 @@ export default function ServicesByCategory({ category, title }: Props) {
       recurrence_start_date: it.recurrence_start_date ?? "",
       contract_end_date: it.contract_end_date ?? "",
       last_recharge_date: it.last_recharge_date ?? "",
+      end_date: it.end_date ?? "",
     });
     setOpen(true);
   };
@@ -100,7 +101,7 @@ export default function ServicesByCategory({ category, title }: Props) {
     }
     ["value","implementation_charged","recurrence_value","discount_percentage","last_recharge_value","daily_spend","traffic_balance"].forEach(k => payload[k] = Number(payload[k] ?? 0));
     ["payment_day","traffic_reload_day","payment_day_2"].forEach(k => payload[k] = payload[k] ? Number(payload[k]) : null);
-    ["recurrence_start_date","contract_end_date","last_recharge_date","next_value_start"].forEach(k => { if (!payload[k]) payload[k] = null; });
+    ["recurrence_start_date","contract_end_date","last_recharge_date","next_value_start","end_date"].forEach(k => { if (!payload[k]) payload[k] = null; });
     payload.next_recurrence_value = form.next_recurrence_value === "" || form.next_recurrence_value == null ? null : Number(form.next_recurrence_value);
     if (!payload.recurrence_period) payload.recurrence_period = null;
     delete payload.implementation_paid;
@@ -129,7 +130,9 @@ export default function ServicesByCategory({ category, title }: Props) {
 
   const set = (k: string, v: any) => setForm((f: any) => ({ ...f, [k]: v }));
 
-  const totalMRR = useMemo(() => items.reduce((a, s) => a + Number(s.recurrence_value ?? 0), 0), [items]);
+  const now = new Date();
+  const vigente = (s: any) => isServiceActive(s, now) ? Number(activeValue(s.recurrence_value, s.next_recurrence_value, s.next_value_start, now)) : 0;
+  const totalMRR = useMemo(() => items.reduce((a, s) => a + vigente(s), 0), [items]);
   const totalImpl = useMemo(() => items.reduce((a, s) => {
     const c = Number(s.implementation_charged ?? 0);
     const p = Number(s.discount_percentage ?? 0);
@@ -189,7 +192,7 @@ export default function ServicesByCategory({ category, title }: Props) {
                     ) : <span className="text-muted-foreground">-</span>}
                   </TableCell>
                   <TableCell className="text-right tabular-nums text-muted-foreground">
-                    {it.recurrence_value ? `${brl(it.recurrence_value)}/${it.recurrence_period === "Anual" ? "ano" : "mês"}` : "-"}
+                    {it.recurrence_value ? `${brl(activeValue(it.recurrence_value, it.next_recurrence_value, it.next_value_start, now))}/${it.recurrence_period === "Anual" ? "ano" : "mês"}` : "-"}
                   </TableCell>
                   {isMarketing && (
                     <TableCell className="text-right tabular-nums text-muted-foreground">
@@ -242,6 +245,11 @@ export default function ServicesByCategory({ category, title }: Props) {
                     <SelectContent>{STATUSES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
                   </Select>
                 </Field>
+                {form.status === "Encerrado" && (
+                  <Field label="Data do último pagamento" required helper="A receita conta até o mês desta data e zera depois.">
+                    <Input type="date" value={form.end_date} onChange={e => set("end_date", e.target.value)} />
+                  </Field>
+                )}
                 <Field label="Prazo (texto livre)">
                   <Input value={form.deadline} onChange={e => set("deadline", e.target.value)} placeholder="ex: 05 Abr" />
                 </Field>

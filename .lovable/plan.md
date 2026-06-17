@@ -1,33 +1,35 @@
 ## Objetivo
 
-Permitir adicionar, editar e excluir as categorias de despesas direto na tela **Despesas**, com as categorias atuais como ponto de partida. Renomear ou excluir uma categoria **não** altera despesas já lançadas.
+Dois ajustes nos serviços (abas Marketing/Sites/Plataformas):
+
+1. **Encerrar cliente com data** — ao inativar um serviço, pedir a data do último pagamento. A receita conta normalmente até o mês desse pagamento e zera a partir do mês seguinte (no Dashboard, projeções e calendário).
+2. **Valor vigente na aba do cliente** — a coluna "Recorrência" e o MRR passam a mostrar o valor em vigor hoje (ex.: BrinkMais R$600 já a partir de junho), e não o valor base cadastrado (R$1200).
+
+## Por que o BrinkMais não mudou
+
+Você cadastrou o novo valor (R$600 a partir de 05/06/2026) no campo "Reajuste futuro". O Dashboard já calcula R$600 de junho em diante, mas a aba do cliente exibe o campo "valor base" cru (R$1200), por isso parecia que nada mudou. Vamos fazer a aba refletir o valor vigente.
 
 ## Banco de dados
 
-Criar tabela `expense_categories` (por usuário, com RLS igual às demais tabelas):
-- `name` — nome da categoria
-- campos padrão (`id`, `user_id`, `created_at`)
-- restrição de nome único por usuário
+- Adicionar a coluna `end_date` (data) na tabela `services` para guardar a data do último pagamento quando o cliente é encerrado.
 
-Na primeira vez que a tela carregar e o usuário não tiver categorias, semear automaticamente a lista atual: Investimento, Infraestrutura, Educação, Despesas Diversas, Software, Equipe, Marketing, Certificado Digital, Outros.
+## Aba do cliente (ServicesByCategory.tsx)
 
-## Tela de Despesas
+- Adicionar o status **"Encerrado"** à lista de status.
+- No formulário, quando o status for "Encerrado", exibir um campo de data **"Data do último pagamento"** (gravado em `end_date`).
+- Na tabela, a coluna **Recorrência** passa a mostrar o **valor vigente** no mês atual (usa `activeValue`), refletindo reajustes já em vigor.
+- O **MRR** do topo passa a somar o valor vigente e a **ignorar serviços encerrados** cujo último pagamento já passou. Serviços encerrados aparecem com o badge "Encerrado".
 
-1. **Carregar categorias** do banco e usar essa lista para preencher o `Select` de categoria (substituindo os itens fixos).
-2. **Botão "Gerenciar categorias"** no topo da página, abrindo um modal.
-3. **Modal de gerenciamento**:
-   - Lista das categorias existentes.
-   - Campo + botão para **adicionar** nova categoria.
-   - Ícone de **editar** (renomear) em cada item.
-   - Ícone de **excluir** em cada item (com confirmação).
-   - Excluir/renomear afeta só a lista de categorias; despesas antigas mantêm o texto original.
-4. Após qualquer alteração, recarregar a lista de categorias.
+## Dashboard (Dashboard.tsx)
 
-## Detalhes técnicos
+Aplicar o corte por encerramento em todos os pontos onde a receita recorrente do serviço é considerada, contando até o mês do último pagamento e zerando depois:
 
-- Reaproveitar o padrão de RLS `auth.uid() = user_id` das outras tabelas.
-- Semear categorias via `insert` no client quando a consulta retornar vazia para o usuário.
-- O `Select` de categoria passa a mapear `categories` carregadas em vez de itens hardcoded.
-- O modal usa os componentes `Dialog`, `Input`, `Button` já existentes.
+- Filtro `recurringServices` (métricas/MRR).
+- Cálculo mensal `cashflowData` (projeções dos 12 meses).
+- Lista do `receiptCalendar` (calendário de recebimentos), que também passa a usar o valor vigente em vez do valor base.
 
-Sem alterações no Dashboard (categorias continuam sendo texto livre nas despesas, então o fluxo de caixa não muda).
+## Detalhe técnico (pricing.ts)
+
+- Criar um helper `isServiceActive(svc, refMonth)` que retorna `false` quando há `end_date` e o mês de referência é posterior ao mês do último pagamento (reaproveita a lógica de comparação por chave de mês já usada em `isContractActive`). Usar esse helper nos pontos do Dashboard acima, em conjunto com o `isContractActive` existente.
+
+Nada do passado é alterado: meses até o último pagamento permanecem com o valor normal.

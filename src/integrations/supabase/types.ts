@@ -305,6 +305,7 @@ export type Database = {
           deadline: string | null
           discount_percentage: number | null
           discount_type: string | null
+          end_date: string | null
           has_contract: boolean | null
           id: string
           implementation_charged: number | null
@@ -336,6 +337,7 @@ export type Database = {
           deadline?: string | null
           discount_percentage?: number | null
           discount_type?: string | null
+          end_date?: string | null
           has_contract?: boolean | null
           id?: string
           implementation_charged?: number | null
@@ -367,6 +369,7 @@ export type Database = {
           deadline?: string | null
           discount_percentage?: number | null
           discount_type?: string | null
+          end_date?: string | null
           has_contract?: boolean | null
           id?: string
           implementation_charged?: number | null

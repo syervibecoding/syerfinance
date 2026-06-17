@@ -66,6 +66,19 @@ export function isContractActive(
   return refKey <= endKey;
 }
 
+/** Retorna true se o serviço ainda está vigente no mês de referência considerando o encerramento.
+ * Sem end_date → sempre ativo. Com end_date → ativo até o mês (inclusive) do último pagamento. */
+export function isServiceActive(
+  svc: { end_date?: string | null } | null | undefined,
+  refMonth: Date,
+): boolean {
+  const end = parseLocalDate(svc?.end_date);
+  if (!end) return true;
+  const endKey = end.getFullYear() * 12 + end.getMonth();
+  const refKey = refMonth.getFullYear() * 12 + refMonth.getMonth();
+  return refKey <= endKey;
+}
+
 /** Calcula a data fim do contrato dada start + duração em meses (último dia do enésimo mês). */
 export function computeContractEnd(startISO: string | null | undefined, months: number): string | null {
   const start = parseLocalDate(startISO);
