@@ -73,6 +73,7 @@ export default function ServicesByCategory({ category, title }: Props) {
       recurrence_start_date: it.recurrence_start_date ?? "",
       contract_end_date: it.contract_end_date ?? "",
       last_recharge_date: it.last_recharge_date ?? "",
+      end_date: it.end_date ?? "",
     });
     setOpen(true);
   };
