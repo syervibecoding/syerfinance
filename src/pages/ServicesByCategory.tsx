@@ -14,12 +14,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { PageHeader, EmptyState } from "@/components/PageHeader";
 import { ImplementationPayments } from "@/components/ImplementationPayments";
 import { brl } from "@/lib/format";
-import { computeContractEnd, monthsBetween } from "@/lib/pricing";
+import { computeContractEnd, monthsBetween, activeValue, isServiceActive } from "@/lib/pricing";
 import { toast } from "@/hooks/use-toast";
 import { Pencil, Trash2, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const STATUSES = ["Pendente", "Em Produção", "Ativo", "Entregue", "Atrasado"] as const;
+const STATUSES = ["Pendente", "Em Produção", "Ativo", "Entregue", "Atrasado", "Encerrado"] as const;
 const PERIODS = ["Mensal", "Anual"] as const;
 
 const baseEmpty = {
@@ -30,14 +30,14 @@ const baseEmpty = {
   next_recurrence_value: "", next_value_start: "",
   payment_day: null as number | null, traffic_reload_day: null as number | null,
   discount_percentage: 0, discount_type: "",
-  has_contract: false, contract_end_date: "",
+  has_contract: false, contract_end_date: "", end_date: "",
   last_recharge_value: 0, last_recharge_date: "", daily_spend: 0, traffic_balance: 0,
   split_payment: false, payment_day_2: null as number | null,
 };
 
 const statusVariant: Record<string, any> = {
   "Pendente": "secondary", "Em Produção": "default", "Ativo": "default",
-  "Entregue": "outline", "Atrasado": "destructive",
+  "Entregue": "outline", "Atrasado": "destructive", "Encerrado": "secondary",
 };
 
 interface Props {
