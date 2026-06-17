@@ -100,7 +100,7 @@ export default function ServicesByCategory({ category, title }: Props) {
     }
     ["value","implementation_charged","recurrence_value","discount_percentage","last_recharge_value","daily_spend","traffic_balance"].forEach(k => payload[k] = Number(payload[k] ?? 0));
     ["payment_day","traffic_reload_day","payment_day_2"].forEach(k => payload[k] = payload[k] ? Number(payload[k]) : null);
-    ["recurrence_start_date","contract_end_date","last_recharge_date","next_value_start"].forEach(k => { if (!payload[k]) payload[k] = null; });
+    ["recurrence_start_date","contract_end_date","last_recharge_date","next_value_start","end_date"].forEach(k => { if (!payload[k]) payload[k] = null; });
     payload.next_recurrence_value = form.next_recurrence_value === "" || form.next_recurrence_value == null ? null : Number(form.next_recurrence_value);
     if (!payload.recurrence_period) payload.recurrence_period = null;
     delete payload.implementation_paid;
@@ -129,7 +129,9 @@ export default function ServicesByCategory({ category, title }: Props) {
 
   const set = (k: string, v: any) => setForm((f: any) => ({ ...f, [k]: v }));
 
-  const totalMRR = useMemo(() => items.reduce((a, s) => a + Number(s.recurrence_value ?? 0), 0), [items]);
+  const now = new Date();
+  const vigente = (s: any) => isServiceActive(s, now) ? Number(activeValue(s.recurrence_value, s.next_recurrence_value, s.next_value_start, now)) : 0;
+  const totalMRR = useMemo(() => items.reduce((a, s) => a + vigente(s), 0), [items]);
   const totalImpl = useMemo(() => items.reduce((a, s) => {
     const c = Number(s.implementation_charged ?? 0);
     const p = Number(s.discount_percentage ?? 0);
@@ -189,7 +191,7 @@ export default function ServicesByCategory({ category, title }: Props) {
                     ) : <span className="text-muted-foreground">-</span>}
                   </TableCell>
                   <TableCell className="text-right tabular-nums text-muted-foreground">
-                    {it.recurrence_value ? `${brl(it.recurrence_value)}/${it.recurrence_period === "Anual" ? "ano" : "mês"}` : "-"}
+                    {it.recurrence_value ? `${brl(vigente(it) || Number(activeValue(it.recurrence_value, it.next_recurrence_value, it.next_value_start, now)))}/${it.recurrence_period === "Anual" ? "ano" : "mês"}` : "-"}
                   </TableCell>
                   {isMarketing && (
                     <TableCell className="text-right tabular-nums text-muted-foreground">
