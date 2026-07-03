@@ -93,6 +93,14 @@ export default function ServicesByCategory({ category, title }: Props) {
         });
       }
     }
+    // Valor pontual (não-cert, sem recorrência): exige mês de referência para entrar no fluxo
+    if (!isCert && !(Number(form.recurrence_value) > 0) && Number(form.value) > 0 && !form.recurrence_start_date) {
+      return toast({
+        title: "Mês de referência obrigatório",
+        description: "Para o valor único, informe o Mês de referência (necessário para o fluxo de caixa).",
+        variant: "destructive",
+      });
+    }
 
     const payload: any = { ...form, user_id: user.id, category };
     // Mantém compat: se há recorrência, replica para 'value'; senão preserva o valor digitado
@@ -192,7 +200,11 @@ export default function ServicesByCategory({ category, title }: Props) {
                     ) : <span className="text-muted-foreground">-</span>}
                   </TableCell>
                   <TableCell className="text-right tabular-nums text-muted-foreground">
-                    {it.recurrence_value ? `${brl(activeValue(it.recurrence_value, it.next_recurrence_value, it.next_value_start, now))}/${it.recurrence_period === "Anual" ? "ano" : "mês"}` : "-"}
+                    {it.recurrence_value
+                      ? `${brl(activeValue(it.recurrence_value, it.next_recurrence_value, it.next_value_start, now))}/${it.recurrence_period === "Anual" ? "ano" : "mês"}`
+                      : Number(it.value) > 0
+                        ? `${brl(it.value)} (único)`
+                        : "-"}
                   </TableCell>
                   {isMarketing && (
                     <TableCell className="text-right tabular-nums text-muted-foreground">
@@ -325,6 +337,24 @@ export default function ServicesByCategory({ category, title }: Props) {
                     <Input type="number" value={form.recurrence_value} onChange={e => set("recurrence_value", e.target.value)} />
                   </Field>
                   <Field label="Mês de referência" required helper="Define em qual mês entra no fluxo de caixa.">
+                    <Input type="date" value={form.recurrence_start_date} onChange={e => set("recurrence_start_date", e.target.value)} />
+                  </Field>
+                </div>
+              </Section>
+            )}
+
+            {/* SEÇÃO: Valor único (pontual) — não recorrente */}
+            {!isCert && !(Number(form.recurrence_value) > 0) && (
+              <Section title="Valor único (pontual)" hint="Cobrança que acontece uma única vez, em um mês específico. Entra no fluxo de caixa nesse mês.">
+                <div className="grid grid-cols-2 gap-4">
+                  <Field label="Valor (R$)" helper="Deixe 0 se não houver cobrança pontual.">
+                    <Input type="number" step="0.01" value={form.value} onChange={e => set("value", e.target.value)} />
+                  </Field>
+                  <Field
+                    label="Mês de referência"
+                    required={Number(form.value) > 0}
+                    helper="Define em qual mês o valor entra no fluxo de caixa."
+                  >
                     <Input type="date" value={form.recurrence_start_date} onChange={e => set("recurrence_start_date", e.target.value)} />
                   </Field>
                 </div>
