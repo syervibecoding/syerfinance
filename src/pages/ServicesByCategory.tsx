@@ -93,6 +93,14 @@ export default function ServicesByCategory({ category, title }: Props) {
         });
       }
     }
+    // Valor pontual (não-cert, sem recorrência): exige mês de referência para entrar no fluxo
+    if (!isCert && !(Number(form.recurrence_value) > 0) && Number(form.value) > 0 && !form.recurrence_start_date) {
+      return toast({
+        title: "Mês de referência obrigatório",
+        description: "Para o valor único, informe o Mês de referência (necessário para o fluxo de caixa).",
+        variant: "destructive",
+      });
+    }
 
     const payload: any = { ...form, user_id: user.id, category };
     // Mantém compat: se há recorrência, replica para 'value'; senão preserva o valor digitado
