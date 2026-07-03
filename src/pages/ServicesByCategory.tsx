@@ -331,6 +331,24 @@ export default function ServicesByCategory({ category, title }: Props) {
               </Section>
             )}
 
+            {/* SEÇÃO: Valor único (pontual) — não recorrente */}
+            {!isCert && !(Number(form.recurrence_value) > 0) && (
+              <Section title="Valor único (pontual)" hint="Cobrança que acontece uma única vez, em um mês específico. Entra no fluxo de caixa nesse mês.">
+                <div className="grid grid-cols-2 gap-4">
+                  <Field label="Valor (R$)" helper="Deixe 0 se não houver cobrança pontual.">
+                    <Input type="number" step="0.01" value={form.value} onChange={e => set("value", e.target.value)} />
+                  </Field>
+                  <Field
+                    label="Mês de referência"
+                    required={Number(form.value) > 0}
+                    helper="Define em qual mês o valor entra no fluxo de caixa."
+                  >
+                    <Input type="date" value={form.recurrence_start_date} onChange={e => set("recurrence_start_date", e.target.value)} />
+                  </Field>
+                </div>
+              </Section>
+            )}
+
             {/* SEÇÃO 3: Implementação (apenas Projetos & Plataformas e Sites) */}
             {(category === "Plataformas" || category === "Sites" || category === "Marketing") && (
               <Section title="Implementação (cobrança única)" hint="Valor cobrado uma única vez pela montagem/setup.">
